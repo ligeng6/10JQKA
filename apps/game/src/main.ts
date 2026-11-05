@@ -4,23 +4,28 @@ import { GameScene } from './scenes/gameScene';
 declare const wx: any;
 
 function main(): void {
-  // 小游戏：wx.createCanvas() 首次调用返回共享主画布
   const canvas = wx.createCanvas();
-  const dpr = wx.getSystemInfoSync().pixelRatio || 1;
-  const w = canvas.width / dpr;
-  const h = canvas.height / dpr;
+  const sys = wx.getSystemInfoSync();
+  const dpr = sys.pixelRatio || 1;
+  const screenW = sys.windowWidth;
+  const screenH = sys.windowHeight;
+
+  // 画布物理像素 = 屏幕逻辑像素 × DPR
+  canvas.width = screenW * dpr;
+  canvas.height = screenH * dpr;
 
   const ctx = canvas.getContext('2d');
+  // 缩放上下文，之后用逻辑像素绘制
+  ctx.scale(dpr, dpr);
 
-  const scene = new GameScene(w, h, 'ffa');
+  const scene = new GameScene(screenW, screenH, 'ffa');
 
-  // 触摸事件
   wx.onTouchStart((e: any) => {
-    const touch = e.touches[0];
-    scene.touch(touch.clientX * dpr, touch.clientY * dpr);
+    const t = e.touches[0];
+    // touch 坐标就是逻辑像素，直接用
+    scene.touch(t.clientX, t.clientY);
   });
 
-  // 游戏循环
   function loop(): void {
     scene.render(ctx);
     requestAnimationFrame(loop);
