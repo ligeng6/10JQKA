@@ -2,7 +2,7 @@
   "miniprogramRoot": "dist/",
   "projectname": "pokergame",
   "description": "原创扑克对战",
-  "appid": "touristappid",
+  "appid": "wx0a9fc189d7db62e7",
   "setting": {
     "urlCheck": true,
     "es6": false,
@@ -38,7 +38,10 @@
     "disableUseStrict": false,
     "minifyWXML": true,
     "showES6CompileOption": false,
-    "useCompilerPlugins": false
+    "useCompilerPlugins": false,
+    "compileWorklet": false,
+    "localPlugins": false,
+    "condition": false
   },
   "compileType": "miniprogram",
   "libVersion": "3.7.1",
@@ -47,5 +50,7 @@
     "ignore": [],
     "include": []
   },
-  "condition": {}
+  "condition": {},
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }

@@ -14,3 +14,11 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# Build artifacts
+.swc/
+dist/
+*.tsbuildinfo
+
+# IDE
+project.private.config.json

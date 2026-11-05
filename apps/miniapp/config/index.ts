@@ -1,6 +1,9 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli';
+import path from 'path';
 
 export default defineConfig<'weapp'>(async (merge) => {
+  const packagesDir = path.resolve(__dirname, '../../../packages');
+
   const baseConfig: UserConfigExport<'weapp'> = {
     projectName: 'pokergame',
     date: '2026-11-3',
@@ -33,6 +36,26 @@ export default defineConfig<'weapp'>(async (merge) => {
         cssModules: {
           enable: false,
         },
+      },
+      webpackChain(chain) {
+        chain.module
+          .rule('packages-ts')
+          .test(/\.tsx?$/)
+          .include.add(packagesDir)
+          .end()
+          .use('babel-loader')
+          .loader(require.resolve('babel-loader'))
+          .options({
+            babelrc: false,
+            configFile: false,
+            presets: [
+              [require.resolve('@babel/preset-env'), { targets: { chrome: '53' } }],
+              [require.resolve('@babel/preset-react'), { runtime: 'automatic' }],
+            ],
+            plugins: [
+              require.resolve('@babel/plugin-transform-typescript'),
+            ],
+          });
       },
     },
     h5: {
