@@ -472,7 +472,7 @@ export function skipEmptyPlayers(state: GameState): void {
 export function canDiscardSmall(state: GameState, playerIndex: number): boolean {
   const player = state.players[playerIndex];
   if (!player) return false;
-  if (player.hand.length === 0) return false;
+  if (player.hand.length < 5) return false;
   return player.hand.every((c) => c.kind === 'normal' && c.rank <= 8);
 }
 
