@@ -115,7 +115,7 @@ export function playCards(
   state: GameState,
   playerIndex: number,
   cards: Card[],
-  stealTargetIndex?: number,
+  stealTargetIndex?: number, stealCardId?: string,
 ): PlayResult {
   if (state.phase !== 'playing') return { state, error: '游戏已结束或不在出牌阶段' };
   if (state.currentPlayerIndex !== playerIndex) return { state, error: '不是你的回合' };
@@ -184,7 +184,7 @@ export function playCards(
     const target = stealTargetIndex ?? findStealTarget(next, playerIndex);
     if (target !== null) {
       for (let i = 0; i < stealCount; i++) {
-        executeSteal(next, playerIndex, target);
+        executeSteal(next, playerIndex, target, stealCardId);
       }
     }
   }
@@ -322,11 +322,11 @@ function findStealTarget(state: GameState, thiefIndex: number): number | null {
   return null;
 }
 
-function executeSteal(state: GameState, thiefIndex: number, targetIndex: number): void {
+function executeSteal(state: GameState, thiefIndex: number, targetIndex: number, stealCardId?: string): void {
   const target = state.players[targetIndex]!;
   if (target.hand.length === 0) return;
 
-  const randomIdx = Math.floor(rng() * target.hand.length);
+  let randomIdx = Math.floor(rng() * target.hand.length); if (stealCardId) { const fi = target.hand.findIndex(c => c.id === stealCardId); if (fi >= 0) randomIdx = fi; }
   const stolen = target.hand.splice(randomIdx, 1)[0]!;
   state.players[thiefIndex]!.hand.push(stolen);
 
