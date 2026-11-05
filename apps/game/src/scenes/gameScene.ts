@@ -2,13 +2,8 @@ import type { GameState, Card, GameMode } from '@pokergame/shared';
 import { createGame, playCards, passTurn, getScores } from '@pokergame/core';
 import { COLORS, SIZES } from '../render/constants';
 import {
-  drawCard,
-  drawButton,
-  drawText,
-  drawPanel,
-  drawTableFelt,
-  hitTest,
-  type Rect,
+  drawCard, drawButton, drawText, drawPanel, drawTableFelt,
+  hitTest, type Rect,
 } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 
@@ -16,176 +11,246 @@ export class GameScene {
   private state: GameState;
   private selectedCards: Card[] = [];
   private message: string = '';
+  private messageTimer: number = 0;
   private myIndex = 0;
-  private canvasW: number;
-  private canvasH: number;
+  private W: number;
+  private H: number;
   private textures: CardTextures;
 
   private cardRects: { card: Card; rect: Rect }[] = [];
-  private btnPlayRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
-  private btnPassRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
-  private btnRestartRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnPlay: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnPass: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnRestart: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnBack: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
-  constructor(canvasW: number, canvasH: number, mode: GameMode = 'ffa') {
-    this.canvasW = canvasW;
-    this.canvasH = canvasH;
+  private onBack: () => void;
+
+  constructor(w: number, h: number, mode: GameMode, onBack: () => void) {
+    this.W = w;
+    this.H = h;
+    this.onBack = onBack;
     this.state = createGame({ mode });
     this.textures = generateCardTextures();
   }
 
   update(w: number, h: number): void {
-    this.canvasW = w;
-    this.canvasH = h;
+    this.W = w;
+    this.H = h;
   }
 
-  render(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
-    const H = this.canvasH;
+  render(ctx: any): void {
+    const W = this.W;
+    const H = this.H;
 
     // 背景
-    ctx.fillStyle = COLORS.TABLE_BG;
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#0d2b1a');
+    bg.addColorStop(0.5, '#1a472a');
+    bg.addColorStop(1, '#0d2b1a');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
     this.renderTopBar(ctx);
-    this.renderOpponents(ctx);
     this.renderTable(ctx);
+    this.renderOpponents(ctx);
     this.renderMyHand(ctx);
     this.renderActions(ctx);
     this.renderMessage(ctx);
   }
 
-  private renderTopBar(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
-    drawPanel(ctx, SIZES.MARGIN, 40, W - SIZES.MARGIN * 2, 60);
-    drawText(ctx, `第${this.state.roundNumber}轮`, SIZES.MARGIN + 16, 58, SIZES.FONT_NORMAL, COLORS.TEXT_WHITE);
-    drawText(ctx, `牌库:${this.state.deck.length}`, W / 2, 58, SIZES.FONT_NORMAL, COLORS.TEXT_WHITE, 'center');
+  // ─── 顶部栏 ─────────────────────────────────────────
+  private renderTopBar(ctx: any): void {
+    const W = this.W;
+    const barH = 48;
+
+    drawPanel(ctx, 0, 0, W, barH, 'rgba(0,0,0,0.35)');
+
+    // 返回按钮
+    this.btnBack = { x: 12, y: 8, w: 64, h: barH - 16 };
+    drawButton(ctx, '←', this.btnBack.x, this.btnBack.y, this.btnBack.w, this.btnBack.h, 'rgba(255,255,255,0.15)');
+
+    drawText(ctx, `第${this.state.roundNumber}轮`, 100, barH / 2, 22, COLORS.TEXT_WHITE, 'left', 'middle');
+    drawText(ctx, `牌库:${this.state.deck.length}`, W / 2, barH / 2, 22, COLORS.TEXT_GRAY, 'center', 'middle');
+
+    const scores = getScores(this.state);
+    drawText(ctx, `分数:${scores[this.myIndex]}`, W - 20, barH / 2, 22, COLORS.TEXT_YELLOW, 'right', 'middle');
+
     if (this.state.phase === 'finished') {
       const won = this.state.winnerIndexes.includes(this.myIndex);
-      drawText(ctx, won ? '你赢了！' : '游戏结束', W - SIZES.MARGIN - 16, 58, SIZES.FONT_NORMAL, COLORS.TEXT_YELLOW, 'right');
+      drawText(ctx, won ? '🏆 你赢了！' : '游戏结束', W / 2, barH + 20, 32, won ? COLORS.TEXT_YELLOW : '#ff6b6b', 'center');
     }
   }
 
-  private renderOpponents(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
+  // ─── 对手（横屏：左右各一个，上方中间一个） ─────────
+  private renderOpponents(ctx: any): void {
     const scores = getScores(this.state);
     const opponents = this.state.players.filter((p) => p.index !== this.myIndex);
-    const panelW = SIZES.OPPONENT_W;
-    const gap = (W - SIZES.MARGIN * 2 - panelW * 3) / 4;
+    const W = this.W;
+    const H = this.H;
+    const pw = 120, ph = 90;
 
-    opponents.forEach((p, i) => {
-      const x = SIZES.MARGIN + gap + i * (panelW + gap);
-      const y = 110;
-      drawPanel(ctx, x, y, panelW, SIZES.OPPONENT_H);
-      drawText(ctx, `玩家${p.index}`, x + panelW / 2, y + 10, SIZES.FONT_SMALL, COLORS.TEXT_WHITE, 'center');
-      drawText(ctx, `手牌:${p.hand.length}`, x + panelW / 2, y + 35, SIZES.FONT_SMALL, COLORS.TEXT_GRAY, 'center');
-      drawText(ctx, `分数:${scores[p.index]}`, x + panelW / 2, y + 55, SIZES.FONT_SMALL, COLORS.TEXT_GRAY, 'center');
-      if (p.benliu.length > 0) {
-        drawText(ctx, `奔流:${p.benliu.length}`, x + panelW / 2, y + 75, SIZES.FONT_SMALL, COLORS.TEXT_YELLOW, 'center');
-      }
-    });
+    // 上方中间
+    const top = opponents[0];
+    if (top) {
+      const x = W / 2 - pw / 2;
+      const y = 56;
+      drawPanel(ctx, x, y, pw, ph);
+      this.drawOpponentInfo(ctx, top, x, y, pw, ph, scores);
+    }
+
+    // 左侧
+    const left = opponents[1];
+    if (left) {
+      const x = 16;
+      const y = H / 2 - ph / 2 - 40;
+      drawPanel(ctx, x, y, pw, ph);
+      this.drawOpponentInfo(ctx, left, x, y, pw, ph, scores);
+    }
+
+    // 右侧
+    const right = opponents[2];
+    if (right) {
+      const x = W - pw - 16;
+      const y = H / 2 - ph / 2 - 40;
+      drawPanel(ctx, x, y, pw, ph);
+      this.drawOpponentInfo(ctx, right, x, y, pw, ph, scores);
+    }
   }
 
-  private renderTable(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
-    const H = this.canvasH;
+  private drawOpponentInfo(ctx: any, p: any, x: number, y: number, w: number, h: number, scores: number[]): void {
+    const isTurn = this.state.currentPlayerIndex === p.index;
+    if (isTurn) {
+      ctx.strokeStyle = COLORS.TEXT_YELLOW;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, 12);
+      ctx.stroke();
+    }
+    drawText(ctx, `玩家${p.index}`, x + w / 2, y + 12, 20, isTurn ? COLORS.TEXT_YELLOW : COLORS.TEXT_WHITE, 'center');
+    drawText(ctx, `手牌:${p.hand.length}`, x + w / 2, y + 36, 18, COLORS.TEXT_GRAY, 'center');
+    drawText(ctx, `分数:${scores[p.index]}`, x + w / 2, y + 56, 18, COLORS.TEXT_GRAY, 'center');
+    if (p.benliu.length > 0) {
+      drawText(ctx, `奔流:${p.benliu.length}`, x + w / 2, y + 74, 16, COLORS.TEXT_YELLOW, 'center');
+    }
+  }
 
-    // 牌桌
-    drawTableFelt(ctx, SIZES.MARGIN, 220, W - SIZES.MARGIN * 2, H - 560);
+  // ─── 牌桌中央 ─────────────────────────────────────
+  private renderTable(ctx: any): void {
+    const W = this.W;
+    const H = this.H;
+    const tX = W * 0.22, tY = H * 0.15, tW = W * 0.56, tH = H * 0.38;
+
+    drawTableFelt(ctx, tX, tY, tW, tH);
 
     const trick = this.state.currentTrick.filter((t) => !t.isPass);
     if (trick.length === 0) {
-      drawText(ctx, '等待出牌...', W / 2, H / 2 - 40, SIZES.FONT_LARGE, 'rgba(255,255,255,0.15)', 'center');
+      drawText(ctx, '等待出牌...', W / 2, tY + tH / 2, 26, 'rgba(255,255,255,0.12)', 'center', 'middle');
       return;
     }
 
-    const startY = H / 2 - 120;
-    trick.forEach((play, i) => {
-      const y = startY + i * (SIZES.CARD_H_SMALL + 20);
-      drawText(ctx, `玩家${play.playerIndex}`, SIZES.MARGIN + 20, y + 10, SIZES.FONT_SMALL, COLORS.TEXT_GRAY);
+    // 横屏：牌桌内排列出牌
+    const cw = 52, ch = 72, gap = 8;
+    let startX = tX + 30;
+    const y = tY + tH / 2 - ch / 2;
+
+    trick.forEach((play) => {
+      drawText(ctx, `P${play.playerIndex}`, startX, y - 18, 16, COLORS.TEXT_GRAY);
       play.cards.forEach((card, j) => {
-        drawCard(ctx, card, SIZES.MARGIN + 120 + j * (SIZES.CARD_W_SMALL + 6), y, SIZES.CARD_W_SMALL, SIZES.CARD_H_SMALL, false, this.textures);
+        drawCard(ctx, card, startX + j * (cw + gap), y, cw, ch, false, this.textures);
       });
+      startX += play.cards.length * (cw + gap) + 20;
     });
   }
 
-  private renderMyHand(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
-    const H = this.canvasH;
+  // ─── 我的手牌（横屏底部） ─────────────────────────
+  private renderMyHand(ctx: any): void {
+    const W = this.W;
+    const H = this.H;
     const hand = this.state.players[this.myIndex]?.hand ?? [];
-    const scores = getScores(this.state);
     const benliu = this.state.players[this.myIndex]?.benliu ?? [];
 
-    drawPanel(ctx, SIZES.MARGIN, H - 320, W - SIZES.MARGIN * 2, 40);
-    const info = `手牌:${hand.length} | 分数:${scores[this.myIndex]}${benliu.length ? ` | 奔流:${benliu.length}` : ''}`;
-    drawText(ctx, info, W / 2, H - 308, SIZES.FONT_SMALL, COLORS.TEXT_WHITE, 'center');
+    // 手牌区域
+    const areaY = H - 160;
+    drawPanel(ctx, 0, areaY, W, 160, 'rgba(0,0,0,0.25)');
 
+    // 信息
+    const info = `手牌:${hand.length}${benliu.length ? ` | 奔流:${benliu.length}` : ''}`;
+    drawText(ctx, info, W / 2, areaY + 14, 18, COLORS.TEXT_GRAY, 'center');
+
+    // 手牌（紧凑排列，可滚动）
     this.cardRects = [];
-    const cardW = SIZES.CARD_W;
-    const cardH = SIZES.CARD_H;
-    const gap = SIZES.CARD_GAP;
-    const totalW = hand.length * (cardW + gap) - gap;
-    const startX = (W - totalW) / 2;
-    const cardY = H - 270;
+    const cw = 72, ch = 100;
+    const gap = 6;
+    const totalW = hand.length * (cw + gap) - gap;
+    const startX = Math.max(16, (W - totalW) / 2);
+    const cardY = areaY + 36;
 
     hand.forEach((card, i) => {
-      const x = startX + i * (cardW + gap);
+      const x = startX + i * (cw + gap);
       const selected = this.selectedCards.some((c) => c.id === card.id);
-      const y = selected ? cardY - 16 : cardY;
-      drawCard(ctx, card, x, y, cardW, cardH, selected, this.textures);
-      this.cardRects.push({ card, rect: { x, y, w: cardW, h: cardH } });
+      const y = selected ? cardY - 12 : cardY;
+      drawCard(ctx, card, x, y, cw, ch, selected, this.textures);
+      this.cardRects.push({ card, rect: { x, y, w: cw, h: ch } });
     });
   }
 
-  private renderActions(ctx: CanvasRenderingContext2D): void {
-    const W = this.canvasW;
-    const H = this.canvasH;
-    const btnY = H - 140;
-    const isMyTurn = this.state.currentPlayerIndex === this.myIndex;
+  // ─── 操作按钮 ─────────────────────────────────────
+  private renderActions(ctx: any): void {
+    const W = this.W;
+    const H = this.H;
     const isFinished = this.state.phase === 'finished';
+    const isMyTurn = this.state.currentPlayerIndex === this.myIndex;
+
+    // 按钮区：右下角
+    const bw = 110, bh = 50;
+    const btnY = H - 150;
+    const btnX = W - bw - 20;
+
+    this.btnPlay = { x: 0, y: 0, w: 0, h: 0 };
+    this.btnPass = { x: 0, y: 0, w: 0, h: 0 };
+    this.btnRestart = { x: 0, y: 0, w: 0, h: 0 };
 
     if (isFinished) {
-      const bw = SIZES.BTN_W + 40;
-      this.btnRestartRect = { x: (W - bw) / 2, y: btnY, w: bw, h: SIZES.BTN_H };
-      drawButton(ctx, '再来一局', this.btnRestartRect.x, btnY, bw, SIZES.BTN_H, COLORS.BTN_RESTART);
-      this.btnPlayRect = { x: 0, y: 0, w: 0, h: 0 };
-      this.btnPassRect = { x: 0, y: 0, w: 0, h: 0 };
+      this.btnRestart = { x: W / 2 - 80, y: H / 2 + 40, w: 160, h: 56 };
+      drawButton(ctx, '再来一局', this.btnRestart.x, this.btnRestart.y, this.btnRestart.w, this.btnRestart.h, COLORS.BTN_RESTART);
     } else if (isMyTurn) {
-      const bw = SIZES.BTN_W;
-      const gap = 30;
-      const totalW = bw * 2 + gap;
-      const startX = (W - totalW) / 2;
-      this.btnPlayRect = { x: startX, y: btnY, w: bw, h: SIZES.BTN_H };
-      this.btnPassRect = { x: startX + bw + gap, y: btnY, w: bw, h: SIZES.BTN_H };
-      this.btnRestartRect = { x: 0, y: 0, w: 0, h: 0 };
-      drawButton(ctx, `出牌(${this.selectedCards.length})`, startX, btnY, bw, SIZES.BTN_H, COLORS.BTN_PLAY);
-      drawButton(ctx, '过牌', startX + bw + gap, btnY, bw, SIZES.BTN_H, COLORS.BTN_PASS);
+      this.btnPlay = { x: btnX, y: btnY, w: bw, h: bh };
+      this.btnPass = { x: btnX, y: btnY - bh - 12, w: bw, h: bh };
+      drawButton(ctx, `出牌(${this.selectedCards.length})`, this.btnPlay.x, this.btnPlay.y, bw, bh, COLORS.BTN_PLAY);
+      drawButton(ctx, '过牌', this.btnPass.x, this.btnPass.y, bw, bh, COLORS.BTN_PASS);
     } else {
-      drawText(ctx, '等待其他玩家...', W / 2, btnY + SIZES.BTN_H / 2, SIZES.FONT_NORMAL, 'rgba(255,255,255,0.2)', 'center', 'middle');
-      this.btnPlayRect = { x: 0, y: 0, w: 0, h: 0 };
-      this.btnPassRect = { x: 0, y: 0, w: 0, h: 0 };
-      this.btnRestartRect = { x: 0, y: 0, w: 0, h: 0 };
+      drawText(ctx, '等待其他玩家...', W - 20, btnY + bh / 2, 18, 'rgba(255,255,255,0.2)', 'right', 'middle');
     }
   }
 
-  private renderMessage(ctx: CanvasRenderingContext2D): void {
-    if (!this.message) return;
-    const W = this.canvasW;
-    drawPanel(ctx, W / 2 - 150, 200, 300, 50, COLORS.OVERLAY);
-    drawText(ctx, this.message, W / 2, 225, SIZES.FONT_NORMAL, '#ff6b6b', 'center', 'middle');
+  // ─── 提示消息 ─────────────────────────────────────
+  private renderMessage(ctx: any): void {
+    if (!this.message || this.messageTimer <= 0) return;
+    this.messageTimer--;
+    const W = this.W;
+    drawPanel(ctx, W / 2 - 160, 120, 320, 44, 'rgba(0,0,0,0.7)');
+    drawText(ctx, this.message, W / 2, 142, 22, '#ff6b6b', 'center', 'middle');
   }
 
+  // ─── 触摸 ─────────────────────────────────────────
   touch(x: number, y: number): void {
+    if (hitTest(this.btnBack, x, y)) {
+      this.onBack();
+      return;
+    }
+
     for (const { card, rect } of this.cardRects) {
       if (hitTest(rect, x, y)) {
         this.toggleCard(card);
         return;
       }
     }
+
     if (this.state.phase === 'finished') {
-      if (hitTest(this.btnRestartRect, x, y)) { this.restart(); return; }
+      if (hitTest(this.btnRestart, x, y)) { this.restart(); return; }
     } else if (this.state.currentPlayerIndex === this.myIndex) {
-      if (hitTest(this.btnPlayRect, x, y)) { this.handlePlay(); return; }
-      if (hitTest(this.btnPassRect, x, y)) { this.handlePass(); return; }
+      if (hitTest(this.btnPlay, x, y)) { this.handlePlay(); return; }
+      if (hitTest(this.btnPass, x, y)) { this.handlePass(); return; }
     }
   }
 
@@ -196,10 +261,15 @@ export class GameScene {
     this.message = '';
   }
 
+  private showMessage(msg: string): void {
+    this.message = msg;
+    this.messageTimer = 90;
+  }
+
   private handlePlay(): void {
-    if (this.selectedCards.length === 0) { this.message = '请先选牌'; return; }
+    if (this.selectedCards.length === 0) { this.showMessage('请先选牌'); return; }
     const { state, error } = playCards(this.state, this.myIndex, [...this.selectedCards]);
-    if (error) { this.message = error; return; }
+    if (error) { this.showMessage(error); return; }
     this.state = state;
     this.selectedCards = [];
     this.message = '';
@@ -207,7 +277,7 @@ export class GameScene {
 
   private handlePass(): void {
     const { state, error } = passTurn(this.state, this.myIndex);
-    if (error) { this.message = error; return; }
+    if (error) { this.showMessage(error); return; }
     this.state = state;
     this.selectedCards = [];
     this.message = '';
