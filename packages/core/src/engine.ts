@@ -220,7 +220,7 @@ export function passTurn(state: GameState, playerIndex: number): PlayResult {
   if (state.currentPlayerIndex !== playerIndex) return { state, error: '不是你的回合' };
 
   const trickHasPlay = state.currentTrick.some((t) => !t.isPass);
-  if (!trickHasPlay) return { state, error: '首出不能过牌' };
+
 
   const next = cloneState(state);
 
@@ -251,7 +251,12 @@ function checkTrickEnd(state: GameState): void {
 
 function endTrick(state: GameState): void {
   const leaderIdx = state.trickLeaderIndex;
-  if (leaderIdx === null) return;
+  if (leaderIdx === null) {
+    // 全场都过 → 清空本轮，当前玩家重新首出
+    state.currentTrick = [];
+    state.passCount = 0;
+    return;
+  }
 
   // 收取本轮落地的计分牌
   const scoringCards: Card[] = [];
