@@ -292,6 +292,8 @@ function endTrick(state: GameState): void {
     state.currentPlayerIndex = leaderIdx;
     state.roundNumber += 1;
 
+    skipEmptyPlayers(state);
+
     // 检查牌库打空
     if (state.deck.length === 0) {
       state.emptyDeckRounds += 1;
@@ -425,4 +427,41 @@ export function getScores(state: GameState): number[] {
       return sum;
     }, 0),
   );
+}
+
+/**
+ * 自动跳过无手牌玩家（手牌+奔流区都为空）
+ * 牌库空且手牌空 = 终局，自动让过牌权
+ */
+export function skipEmptyPlayers(state: GameState): void {
+  let guard = 0;
+  while (guard < PLAYER_COUNT) {
+    const p = state.players[state.currentPlayerIndex];
+    if (!p) break;
+    if (p.hand.length + p.benliu.length > 0) break;
+    state.currentPlayerIndex = (state.currentPlayerIndex + 1) % PLAYER_COUNT;
+    guard++;
+  }
+  // 检查是否所有人都没牌了
+  const allEmpty = state.players.every((p) => p.hand.length + p.benliu.length === 0);
+  if (allEmpty && state.phase === 'playing') {
+    endTrick(state);
+    checkScoreVictory(state);
+    if (state.phase === 'playing') {
+      state.phase = 'finished';
+      const scores = state.players.map((p) =>
+        p.collectedScore.reduce((s, c) => {
+          if (c.kind === 'normal') {
+            if (c.rank === 5) return s + 5;
+            if (c.rank === 10 || c.rank === 13) return s + 10;
+          }
+          return s;
+        }, 0),
+      );
+      const maxScore = Math.max(...scores);
+      state.winnerIndexes = scores.map((s, i) => ({ s, i })).filter(({ s }) => s === maxScore).map(({ i }) => i);
+      state.victoryType = 'score';
+      state.log.push('所有玩家手牌已空，终局结算');
+    }
+  }
 }

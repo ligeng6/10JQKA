@@ -1,5 +1,5 @@
 import type { GameState, Card, GameMode } from '@pokergame/shared';
-import { createGame, playCards, passTurn, getScores } from '@pokergame/core';
+import { createGame, playCards, passTurn, getScores, skipEmptyPlayers } from '@pokergame/core';
 import { isScoringCard, cardScoreValue } from '@pokergame/shared';
 import { COLORS } from '../render/constants';
 import {
@@ -89,11 +89,12 @@ export class GameScene {
     if (action.type === 'play' && action.cards?.length) {
       const t = pickStealTarget(this.state, idx);
       const { state, error } = playCards(this.state, idx, action.cards, t >= 0 ? t : undefined);
-      if (!error) this.state = state;
-      else { const r = passTurn(this.state, idx); this.state = r.state; }
+      if (!error) { this.state = state; skipEmptyPlayers(this.state); }
+      else { const r = passTurn(this.state, idx); this.state = r.state; skipEmptyPlayers(this.state); }
     } else {
       const r = passTurn(this.state, idx);
       this.state = r.state;
+      skipEmptyPlayers(this.state);
     }
   }
 
@@ -464,6 +465,7 @@ export class GameScene {
     const { state, error } = playCards(this.state, this.myIndex, [...this.selectedCards]);
     if (error) { this.showMessage(error); return; }
     this.state = state;
+    skipEmptyPlayers(this.state);
     this.selectedCards = [];
     this.message = '';
     if (eights > 0) {
@@ -476,6 +478,7 @@ export class GameScene {
     const { state, error } = passTurn(this.state, this.myIndex);
     if (error) { this.showMessage(error); return; }
     this.state = state;
+    skipEmptyPlayers(this.state);
     this.selectedCards = [];
     this.message = '';
   }
