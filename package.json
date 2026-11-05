@@ -1,0 +1,30 @@
+{
+  "name": "pokergame",
+  "version": "0.1.0",
+  "private": true,
+  "description": "原创单副扑克对战玩法 —— 微信小程序",
+  "scripts": {
+    "build:core": "pnpm --filter @pokergame/core build",
+    "build:shared": "pnpm --filter @pokergame/shared build",
+    "build": "pnpm build:shared && pnpm build:core",
+    "test": "pnpm --filter @pokergame/core test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "dev:weapp": "pnpm --filter @pokergame/miniapp dev:weapp",
+    "build:weapp": "pnpm --filter @pokergame/miniapp build:weapp"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.1",
+    "@typescript-eslint/parser": "^8.18.1",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.34.9"
+}

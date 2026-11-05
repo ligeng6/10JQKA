@@ -1,0 +1,99 @@
+.card {
+  width: 100px;
+  height: 140px;
+  background: #fff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.card.small {
+  width: 72px;
+  height: 100px;
+  border-radius: 8px;
+}
+
+.card.selected {
+  transform: translateY(-16px);
+  box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
+  border: 3px solid #ffd700;
+}
+
+.card:active {
+  transform: scale(0.95);
+}
+
+.card-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.card.small .card-face {
+  gap: 2px;
+}
+
+.card-rank {
+  font-size: 36px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.card.small .card-rank {
+  font-size: 26px;
+}
+
+.card-suit {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.card.small .card-suit {
+  font-size: 20px;
+}
+
+.red {
+  color: #d32f2f;
+}
+
+.black {
+  color: #222;
+}
+
+.joker-face {
+  gap: 2px;
+}
+
+.joker-text {
+  font-size: 32px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.card.small .joker-text {
+  font-size: 22px;
+}
+
+.joker-label {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.card.small .joker-label {
+  font-size: 18px;
+}
+
+.big-joker {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: #fff;
+}
+
+.small-joker {
+  background: linear-gradient(135deg, #4a69bd, #0c2461);
+  color: #fff;
+}
