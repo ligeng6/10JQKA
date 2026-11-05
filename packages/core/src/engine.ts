@@ -503,3 +503,25 @@ export function discardSmall(state: GameState, playerIndex: number): PlayResult 
 
   return { state: next };
 }
+
+/**
+ * 终局结算：按当前已收集的计分牌分数决定胜负
+ */
+export function finishByScores(state: GameState): void {
+  const scores = state.players.map((p) =>
+    p.collectedScore.reduce((s, c) => {
+      if (c.kind === 'normal') {
+        if (c.rank === 5) return s + 5;
+        if (c.rank === 10 || c.rank === 13) return s + 10;
+      }
+      return s;
+    }, 0),
+  );
+  const maxScore = Math.max(...scores);
+  const winners = scores.map((s, i) => ({ s, i })).filter(({ s }) => s === maxScore).map(({ i }) => i);
+
+  state.phase = 'finished';
+  state.victoryType = 'score';
+  state.winnerIndexes = winners;
+  addLog(state, '终局结算（牌河耗尽），最高分' + maxScore + '，胜者：玩家' + winners.join(','));
+}
