@@ -114,6 +114,8 @@ export interface GameState {
   trickLeaderIndex: number | null;
   /** 连续 PASS 计数 */
   passCount: number;
+  /** 牌库连续打空几轮后洗牌重置（0=不洗牌） */
+  shuffleRounds: number;
   /** 牌库连续打空轮数 */
   emptyDeckRounds: number;
   phase: GamePhase;

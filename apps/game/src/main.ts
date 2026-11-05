@@ -3,8 +3,7 @@ import { GameScene } from './scenes/gameScene';
 
 declare const wx: any;
 
-type Scene = MenuScene | GameScene;
-let currentScene: Scene;
+let currentScene: any;
 let canvas: any;
 let ctx: any;
 let dpr = 1;
@@ -12,8 +11,8 @@ let screenW = 0;
 let screenH = 0;
 
 function switchToMenu(): void {
-  currentScene = new MenuScene(screenW, screenH, (mode) => {
-    currentScene = new GameScene(screenW, screenH, mode, switchToMenu);
+  currentScene = new MenuScene(screenW, screenH, (mode, shuffleRounds) => {
+    currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds);
   });
 }
 
@@ -21,7 +20,6 @@ function main(): void {
   canvas = wx.createCanvas();
   const sys = wx.getSystemInfoSync();
   dpr = sys.pixelRatio || 1;
-  // 横屏：width > height
   screenW = sys.windowWidth;
   screenH = sys.windowHeight;
 

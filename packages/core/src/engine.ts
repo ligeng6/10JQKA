@@ -26,6 +26,8 @@ export function setRng(fn: () => number): void {
 // ─── 创建游戏 ─────────────────────────────────────────────
 
 export interface GameConfig {
+  /** 牌库打空几轮后洗牌重置（0=不洗牌） */
+  shuffleRounds?: number;
   mode: GameMode;
   seed?: number;
 }
@@ -66,6 +68,7 @@ export function createGame(config: GameConfig): GameState {
     currentTrick: [],
     trickLeaderIndex: null,
     passCount: 0,
+    shuffleRounds: config.shuffleRounds ?? EMPTY_DECK_ROUNDS_TO_SHUFFLE,
     emptyDeckRounds: 0,
     phase: 'playing',
     pendingStealFrom: null,
@@ -297,7 +300,7 @@ function endTrick(state: GameState): void {
     // 检查牌库打空
     if (state.deck.length === 0) {
       state.emptyDeckRounds += 1;
-      if (state.emptyDeckRounds >= EMPTY_DECK_ROUNDS_TO_SHUFFLE) {
+      if (state.shuffleRounds > 0 && state.emptyDeckRounds >= state.shuffleRounds) {
         shuffleReset(state);
       }
     } else {
@@ -369,7 +372,7 @@ function shuffleReset(state: GameState): void {
   state.deck = shuffled;
   state.emptyDeckRounds = 0;
 
-  addLog(state, `牌库打空${EMPTY_DECK_ROUNDS_TO_SHUFFLE}轮，洗牌重置`);
+  addLog(state, '牌库打空' + state.shuffleRounds + '轮，洗牌重置');
 }
 
 // ─── 胜利判定 ─────────────────────────────────────────────

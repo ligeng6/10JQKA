@@ -42,11 +42,11 @@ export class GameScene {
   private aiTimer = 0;
   private readonly AI_DELAY = 40;
 
-  constructor(w: number, h: number, mode: GameMode, onBack: () => void) {
+  constructor(w: number, h: number, mode: GameMode, onBack: () => void, shuffleRounds: number = 3) {
     this.W = w;
     this.H = h;
     this.onBack = onBack;
-    this.state = createGame({ mode });
+    this.state = createGame({ mode, shuffleRounds });
     this.textures = generateCardTextures();
   }
 
@@ -503,7 +503,7 @@ export class GameScene {
   }
 
   private restart(): void {
-    this.state = createGame({ mode: this.state.mode });
+    this.state = createGame({ mode: this.state.mode, shuffleRounds: this.state.shuffleRounds });
     this.selectedCards = [];
     this.message = '';
     this.stealMode = 'none';
