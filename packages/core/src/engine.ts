@@ -465,3 +465,41 @@ export function skipEmptyPlayers(state: GameState): void {
     }
   }
 }
+
+// ─── 弃小牌换牌 ─────────────────────────────────────
+
+/** 手牌是否全为小牌（点数 <= 8，即 3,4,5,6,7,8） */
+export function canDiscardSmall(state: GameState, playerIndex: number): boolean {
+  const player = state.players[playerIndex];
+  if (!player) return false;
+  if (player.hand.length === 0) return false;
+  return player.hand.every((c) => c.kind === 'normal' && c.rank <= 8);
+}
+
+/**
+ * 弃小牌换牌：弃掉所有手牌（不触发计分/偷牌/奔流），摸5张新牌
+ */
+export function discardSmall(state: GameState, playerIndex: number): PlayResult {
+  if (state.phase !== 'playing') return { state, error: '游戏已结束' };
+  if (state.currentPlayerIndex !== playerIndex) return { state, error: '不是你的回合' };
+
+  const player = state.players[playerIndex];
+  if (!player) return { state, error: '玩家不存在' };
+  if (!canDiscardSmall(state, playerIndex)) return { state, error: '手牌不全为小牌(≤8)' };
+
+  const next = cloneState(state);
+  const discarded = [...next.players[playerIndex]!.hand];
+  next.players[playerIndex]!.hand = [];
+
+  const { drawn, deck } = drawCards(next.deck, STARTING_HAND_SIZE);
+  next.deck = deck;
+  next.players[playerIndex]!.hand = sortByRank(drawn);
+
+  addLog(next, '玩家' + playerIndex + '弃小牌换牌（弃' + discarded.length + '张，摸' + drawn.length + '张）');
+
+  next.currentPlayerIndex = (playerIndex + 1) % PLAYER_COUNT;
+  next.passCount = 0;
+  skipEmptyPlayers(next);
+
+  return { state: next };
+}

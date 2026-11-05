@@ -1,5 +1,5 @@
 import type { GameState, Card, GameMode } from '@pokergame/shared';
-import { createGame, playCards, passTurn, getScores, skipEmptyPlayers } from '@pokergame/core';
+import { createGame, playCards, passTurn, getScores, skipEmptyPlayers, canDiscardSmall, discardSmall } from '@pokergame/core';
 import { isScoringCard, cardScoreValue } from '@pokergame/shared';
 import { COLORS } from '../render/constants';
 import {
@@ -24,6 +24,7 @@ export class GameScene {
   private btnPlay: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnPass: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnRestart: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnDiscard: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnBack: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   // 偷牌选牌
@@ -237,6 +238,7 @@ export class GameScene {
     this.btnPlay = { x: 0, y: 0, w: 0, h: 0 };
     this.btnPass = { x: 0, y: 0, w: 0, h: 0 };
     this.btnRestart = { x: 0, y: 0, w: 0, h: 0 };
+    this.btnDiscard = { x: 0, y: 0, w: 0, h: 0 };
 
     const bw = 110, bh = 50;
     const bx = W - bw - 20;
@@ -371,6 +373,7 @@ export class GameScene {
     } else if (this.state.currentPlayerIndex === this.myIndex) {
       if (hitTest(this.btnPlay, x, y)) { this.handlePlay(); return; }
       if (hitTest(this.btnPass, x, y)) { this.handlePass(); return; }
+      if (hitTest(this.btnDiscard, x, y)) { this.handleDiscard(); return; }
     }
   }
 
@@ -472,6 +475,15 @@ export class GameScene {
       this.pendingStealCount = eights;
       this.stealMode = 'select-target';
     }
+  }
+
+  private handleDiscard(): void {
+    const { state, error } = discardSmall(this.state, this.myIndex);
+    if (error) { this.showMessage(error); return; }
+    this.state = state;
+    skipEmptyPlayers(this.state);
+    this.selectedCards = [];
+    this.message = '';
   }
 
   private handlePass(): void {
