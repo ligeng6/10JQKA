@@ -255,6 +255,12 @@ export class GameScene {
     } else if (this.stealMode === 'none') {
       drawText(ctx, '🤖 AI 思考中...', W - 20, by + bh / 2, 18, 'rgba(255,255,255,0.2)', 'right', 'middle');
     }
+
+    // 弃牌换牌按钮：任何时候都显示（只要手牌全≤8）
+    if (this.stealMode === 'none' && this.state.phase === 'playing' && canDiscardSmall(this.state, this.myIndex)) {
+      this.btnDiscard = { x: 16, y: H - 155, w: bw, h: bh };
+      drawButton(ctx, '弃牌换牌', 16, H - 155, bw, bh, '#8e44ad');
+    }
   }
 
   // ─── 偷牌覆盖层 ────────────────────────────────────
@@ -368,12 +374,13 @@ export class GameScene {
     for (const { card, rect } of this.handRects) {
       if (hitTest(rect, x, y)) { this.toggleCard(card); return; }
     }
+    if (hitTest(this.btnDiscard, x, y)) { this.handleDiscard(); return; }
     if (this.state.phase === 'finished') {
       if (hitTest(this.btnRestart, x, y)) { this.restart(); return; }
     } else if (this.state.currentPlayerIndex === this.myIndex) {
       if (hitTest(this.btnPlay, x, y)) { this.handlePlay(); return; }
       if (hitTest(this.btnPass, x, y)) { this.handlePass(); return; }
-      if (hitTest(this.btnDiscard, x, y)) { this.handleDiscard(); return; }
+
     }
   }
 

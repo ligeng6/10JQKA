@@ -481,7 +481,6 @@ export function canDiscardSmall(state: GameState, playerIndex: number): boolean 
  */
 export function discardSmall(state: GameState, playerIndex: number): PlayResult {
   if (state.phase !== 'playing') return { state, error: '游戏已结束' };
-  if (state.currentPlayerIndex !== playerIndex) return { state, error: '不是你的回合' };
 
   const player = state.players[playerIndex];
   if (!player) return { state, error: '玩家不存在' };
@@ -497,8 +496,6 @@ export function discardSmall(state: GameState, playerIndex: number): PlayResult 
 
   addLog(next, '玩家' + playerIndex + '弃小牌换牌（弃' + discarded.length + '张，摸' + drawn.length + '张）');
 
-  next.currentPlayerIndex = (playerIndex + 1) % PLAYER_COUNT;
-  next.passCount = 0;
   skipEmptyPlayers(next);
 
   return { state: next };
