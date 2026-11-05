@@ -9,7 +9,7 @@ export interface Rect {
   h: number;
 }
 
-function getTexture(card: Card, textures: CardTextures): HTMLCanvasElement | null {
+function getTexture(card: Card, textures: CardTextures): any | null {
   if (card.kind === 'joker') {
     return textures[card.joker === 'big' ? 'joker-big' : 'joker-small'] ?? null;
   }
