@@ -6,6 +6,7 @@ import {
   hitTest, type Rect,
 } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
+import { decideAction, pickStealTarget } from '../ai';
 
 export class GameScene {
   private state: GameState;
@@ -24,6 +25,8 @@ export class GameScene {
   private btnBack: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   private onBack: () => void;
+  private aiTimer: number = 0;
+  private readonly AI_DELAY = 40; // 帧数（约 0.7 秒）
 
   constructor(w: number, h: number, mode: GameMode, onBack: () => void) {
     this.W = w;
@@ -39,10 +42,11 @@ export class GameScene {
   }
 
   render(ctx: any): void {
+    this.processAI();
+
     const W = this.W;
     const H = this.H;
 
-    // 背景
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#0d2b1a');
     bg.addColorStop(0.5, '#1a472a');
@@ -58,6 +62,40 @@ export class GameScene {
     this.renderMessage(ctx);
   }
 
+  // ─── AI 自动出牌 ──────────────────────────────────
+  private processAI(): void {
+    if (this.state.phase !== 'playing') return;
+    const idx = this.state.currentPlayerIndex;
+    if (idx === this.myIndex) {
+      this.aiTimer = 0;
+      return;
+    }
+
+    this.aiTimer++;
+    if (this.aiTimer < this.AI_DELAY) return;
+    this.aiTimer = 0;
+
+    const action = decideAction(this.state, idx);
+
+    if (action.type === 'play' && action.cards && action.cards.length > 0) {
+      let stealTarget = action.stealTarget;
+      if (stealTarget !== undefined && stealTarget >= 0) {
+        stealTarget = pickStealTarget(this.state, idx);
+      }
+      const { state, error } = playCards(this.state, idx, action.cards, stealTarget ?? undefined);
+      if (!error) {
+        this.state = state;
+      } else {
+        // 出牌失败则过牌
+        const { state: ps } = passTurn(this.state, idx);
+        this.state = ps;
+      }
+    } else {
+      const { state } = passTurn(this.state, idx);
+      this.state = state;
+    }
+  }
+
   // ─── 顶部栏 ─────────────────────────────────────────
   private renderTopBar(ctx: any): void {
     const W = this.W;
@@ -65,7 +103,6 @@ export class GameScene {
 
     drawPanel(ctx, 0, 0, W, barH, 'rgba(0,0,0,0.35)');
 
-    // 返回按钮
     this.btnBack = { x: 12, y: 8, w: 64, h: barH - 16 };
     drawButton(ctx, '←', this.btnBack.x, this.btnBack.y, this.btnBack.w, this.btnBack.h, 'rgba(255,255,255,0.15)');
 
@@ -81,7 +118,7 @@ export class GameScene {
     }
   }
 
-  // ─── 对手（横屏：左右各一个，上方中间一个） ─────────
+  // ─── 对手 ─────────────────────────────────────────
   private renderOpponents(ctx: any): void {
     const scores = getScores(this.state);
     const opponents = this.state.players.filter((p) => p.index !== this.myIndex);
@@ -89,44 +126,32 @@ export class GameScene {
     const H = this.H;
     const pw = 120, ph = 90;
 
-    // 上方中间
-    const top = opponents[0];
-    if (top) {
-      const x = W / 2 - pw / 2;
-      const y = 56;
-      drawPanel(ctx, x, y, pw, ph);
-      this.drawOpponentInfo(ctx, top, x, y, pw, ph, scores);
-    }
+    const positions = [
+      { x: W / 2 - pw / 2, y: 56 },
+      { x: 16, y: H / 2 - ph / 2 - 40 },
+      { x: W - pw - 16, y: H / 2 - ph / 2 - 40 },
+    ];
 
-    // 左侧
-    const left = opponents[1];
-    if (left) {
-      const x = 16;
-      const y = H / 2 - ph / 2 - 40;
-      drawPanel(ctx, x, y, pw, ph);
-      this.drawOpponentInfo(ctx, left, x, y, pw, ph, scores);
-    }
-
-    // 右侧
-    const right = opponents[2];
-    if (right) {
-      const x = W - pw - 16;
-      const y = H / 2 - ph / 2 - 40;
-      drawPanel(ctx, x, y, pw, ph);
-      this.drawOpponentInfo(ctx, right, x, y, pw, ph, scores);
-    }
+    opponents.forEach((p, i) => {
+      const pos = positions[i];
+      if (!pos) return;
+      drawPanel(ctx, pos.x, pos.y, pw, ph);
+      this.drawOpponentInfo(ctx, p, pos.x, pos.y, pw, ph, scores);
+    });
   }
 
   private drawOpponentInfo(ctx: any, p: any, x: number, y: number, w: number, h: number, scores: number[]): void {
     const isTurn = this.state.currentPlayerIndex === p.index;
     if (isTurn) {
+      ctx.save();
       ctx.strokeStyle = COLORS.TEXT_YELLOW;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 12);
+      ctx.arc(x + w / 2, y + h / 2, Math.max(w, h) * 0.55, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
-    drawText(ctx, `玩家${p.index}`, x + w / 2, y + 12, 20, isTurn ? COLORS.TEXT_YELLOW : COLORS.TEXT_WHITE, 'center');
+    drawText(ctx, `🤖 P${p.index}`, x + w / 2, y + 12, 20, isTurn ? COLORS.TEXT_YELLOW : COLORS.TEXT_WHITE, 'center');
     drawText(ctx, `手牌:${p.hand.length}`, x + w / 2, y + 36, 18, COLORS.TEXT_GRAY, 'center');
     drawText(ctx, `分数:${scores[p.index]}`, x + w / 2, y + 56, 18, COLORS.TEXT_GRAY, 'center');
     if (p.benliu.length > 0) {
@@ -134,7 +159,7 @@ export class GameScene {
     }
   }
 
-  // ─── 牌桌中央 ─────────────────────────────────────
+  // ─── 牌桌 ─────────────────────────────────────────
   private renderTable(ctx: any): void {
     const W = this.W;
     const H = this.H;
@@ -148,7 +173,6 @@ export class GameScene {
       return;
     }
 
-    // 横屏：牌桌内排列出牌
     const cw = 52, ch = 72, gap = 8;
     let startX = tX + 30;
     const y = tY + tH / 2 - ch / 2;
@@ -162,22 +186,19 @@ export class GameScene {
     });
   }
 
-  // ─── 我的手牌（横屏底部） ─────────────────────────
+  // ─── 我的手牌 ─────────────────────────────────────
   private renderMyHand(ctx: any): void {
     const W = this.W;
     const H = this.H;
     const hand = this.state.players[this.myIndex]?.hand ?? [];
     const benliu = this.state.players[this.myIndex]?.benliu ?? [];
 
-    // 手牌区域
     const areaY = H - 160;
     drawPanel(ctx, 0, areaY, W, 160, 'rgba(0,0,0,0.25)');
 
-    // 信息
     const info = `手牌:${hand.length}${benliu.length ? ` | 奔流:${benliu.length}` : ''}`;
     drawText(ctx, info, W / 2, areaY + 14, 18, COLORS.TEXT_GRAY, 'center');
 
-    // 手牌（紧凑排列，可滚动）
     this.cardRects = [];
     const cw = 72, ch = 100;
     const gap = 6;
@@ -194,14 +215,13 @@ export class GameScene {
     });
   }
 
-  // ─── 操作按钮 ─────────────────────────────────────
+  // ─── 按钮 ─────────────────────────────────────────
   private renderActions(ctx: any): void {
     const W = this.W;
     const H = this.H;
     const isFinished = this.state.phase === 'finished';
     const isMyTurn = this.state.currentPlayerIndex === this.myIndex;
 
-    // 按钮区：右下角
     const bw = 110, bh = 50;
     const btnY = H - 150;
     const btnX = W - bw - 20;
@@ -219,11 +239,11 @@ export class GameScene {
       drawButton(ctx, `出牌(${this.selectedCards.length})`, this.btnPlay.x, this.btnPlay.y, bw, bh, COLORS.BTN_PLAY);
       drawButton(ctx, '过牌', this.btnPass.x, this.btnPass.y, bw, bh, COLORS.BTN_PASS);
     } else {
-      drawText(ctx, '等待其他玩家...', W - 20, btnY + bh / 2, 18, 'rgba(255,255,255,0.2)', 'right', 'middle');
+      drawText(ctx, '🤖 AI 思考中...', W - 20, btnY + bh / 2, 18, 'rgba(255,255,255,0.2)', 'right', 'middle');
     }
   }
 
-  // ─── 提示消息 ─────────────────────────────────────
+  // ─── 消息 ─────────────────────────────────────────
   private renderMessage(ctx: any): void {
     if (!this.message || this.messageTimer <= 0) return;
     this.messageTimer--;
@@ -234,16 +254,10 @@ export class GameScene {
 
   // ─── 触摸 ─────────────────────────────────────────
   touch(x: number, y: number): void {
-    if (hitTest(this.btnBack, x, y)) {
-      this.onBack();
-      return;
-    }
+    if (hitTest(this.btnBack, x, y)) { this.onBack(); return; }
 
     for (const { card, rect } of this.cardRects) {
-      if (hitTest(rect, x, y)) {
-        this.toggleCard(card);
-        return;
-      }
+      if (hitTest(rect, x, y)) { this.toggleCard(card); return; }
     }
 
     if (this.state.phase === 'finished') {
@@ -268,7 +282,10 @@ export class GameScene {
 
   private handlePlay(): void {
     if (this.selectedCards.length === 0) { this.showMessage('请先选牌'); return; }
-    const { state, error } = playCards(this.state, this.myIndex, [...this.selectedCards]);
+    const stealTarget = this.selectedCards.some((c) => c.kind === 'normal' && c.rank === 8)
+      ? pickStealTarget(this.state, this.myIndex)
+      : undefined;
+    const { state, error } = playCards(this.state, this.myIndex, [...this.selectedCards], stealTarget);
     if (error) { this.showMessage(error); return; }
     this.state = state;
     this.selectedCards = [];
