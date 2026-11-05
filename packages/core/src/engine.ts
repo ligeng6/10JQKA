@@ -306,6 +306,12 @@ function endTrick(state: GameState): void {
     } else {
       state.emptyDeckRounds = 0;
     }
+
+    // 终局条件1: 牌河耗尽 + 所有玩家手牌打完
+    const allEmpty = state.players.every((p) => p.hand.length + p.benliu.length === 0);
+    if (state.phase === 'playing' && allEmpty && state.deck.length === 0) {
+      finishByScores(state);
+    }
   }
 }
 
