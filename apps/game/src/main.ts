@@ -1,25 +1,26 @@
 import { MenuScene } from './scenes/menuScene';
 import { GameScene } from './scenes/gameScene';
+import { bgm } from './bgm';
 
 declare const wx: any;
 
 let currentScene: any;
 let canvas: any;
 let ctx: any;
-let dpr = 1;
 let screenW = 0;
 let screenH = 0;
 
 function switchToMenu(): void {
   currentScene = new MenuScene(screenW, screenH, (mode, shuffleRounds) => {
     currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds);
+    bgm.play();
   });
 }
 
 function main(): void {
   canvas = wx.createCanvas();
   const sys = wx.getSystemInfoSync();
-  dpr = sys.pixelRatio || 1;
+  const dpr = sys.pixelRatio || 1;
   screenW = sys.windowWidth;
   screenH = sys.windowHeight;
 
@@ -28,6 +29,10 @@ function main(): void {
 
   ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+
+  // 初始化 BGM
+  bgm.init('assets/audio/bgm.mp3');
+  bgm.play();
 
   switchToMenu();
 

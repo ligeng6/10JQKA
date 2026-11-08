@@ -1,4 +1,5 @@
 import { COLORS } from '../render/constants';
+import { bgm } from '../bgm';
 import { drawButton, drawText, drawPanel, roundRect, hitTest, type Rect } from '../render/draw';
 
 export class MenuScene {
@@ -11,6 +12,7 @@ export class MenuScene {
   private btn2v2: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnMinus: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnPlus: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnBgm: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   private particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
 
@@ -79,6 +81,13 @@ export class MenuScene {
 
     drawText(ctx, '0 = 牌库空后不恢复', W / 2, settingsY + 72, 16, 'rgba(255,255,255,0.25)', 'center');
 
+    // BGM 开关
+    const bgmY = settingsY + 88;
+    drawPanel(ctx, W / 2 - 200, bgmY, 400, 52, 'rgba(255,255,255,0.06)');
+    drawText(ctx, '背景音乐', W / 2 - 160, bgmY + 26, 22, COLORS.TEXT_WHITE, 'left', 'middle');
+    this.btnBgm = { x: W / 2 + 60, y: bgmY + 6, w: 80, h: 40 };
+    drawButton(ctx, bgm.enabled ? 'ON' : 'OFF', this.btnBgm.x, this.btnBgm.y, 80, 40, bgm.enabled ? '#27ae60' : '#7f8c8d');
+
     // 模式按钮
     const btnW = Math.min(240, W * 0.24);
     const btnH = Math.min(72, H * 0.1);
@@ -132,6 +141,10 @@ export class MenuScene {
     }
     if (hitTest(this.btnPlus, x, y)) {
       if (this.shuffleRounds < 10) this.shuffleRounds++;
+      return;
+    }
+    if (hitTest(this.btnBgm, x, y)) {
+      bgm.toggle();
       return;
     }
     if (hitTest(this.btnFfa, x, y)) {
