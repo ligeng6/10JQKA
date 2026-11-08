@@ -41,6 +41,15 @@ function main(): void {
     currentScene.touch(t.clientX, t.clientY);
   });
 
+  wx.onTouchMove((e: any) => {
+    const t = e.touches[0];
+    if (currentScene.touchMove) currentScene.touchMove(t.clientX, t.clientY);
+  });
+
+  wx.onTouchEnd(() => {
+    if (currentScene.touchEnd) currentScene.touchEnd();
+  });
+
   function loop(): void {
     currentScene.render(ctx);
     requestAnimationFrame(loop);

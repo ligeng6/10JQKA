@@ -8,6 +8,7 @@ import {
 } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 import { decideAction, pickStealTarget } from '../ai';
+import { sfx } from '../sfx';
 
 export class GameScene {
   private state: GameState;
@@ -378,8 +379,8 @@ export class GameScene {
     if (this.state.phase === 'finished') {
       if (hitTest(this.btnRestart, x, y)) { this.restart(); return; }
     } else if (this.state.currentPlayerIndex === this.myIndex) {
-      if (hitTest(this.btnPlay, x, y)) { this.handlePlay(); return; }
-      if (hitTest(this.btnPass, x, y)) { this.handlePass(); return; }
+      if (hitTest(this.btnPlay, x, y)) { sfx.click(); this.handlePlay(); return; }
+      if (hitTest(this.btnPass, x, y)) { sfx.click(); this.handlePass(); return; }
 
     }
   }
@@ -431,6 +432,7 @@ export class GameScene {
   }
 
   private executeSteal(): void {
+    sfx.steal();
     if (this.stealSelectedIds.length === 0) {
       this.showMessage('请选择要偷的牌');
       return;
@@ -461,6 +463,7 @@ export class GameScene {
     const idx = this.selectedCards.findIndex((c) => c.id === card.id);
     if (idx >= 0) this.selectedCards.splice(idx, 1);
     else this.selectedCards.push(card);
+    sfx.selectCard();
     this.message = '';
   }
 
@@ -476,6 +479,10 @@ export class GameScene {
     if (error) { this.showMessage(error); return; }
     this.state = state;
     skipEmptyPlayers(this.state);
+    sfx.playCard();
+    if (eights > 0) {
+      sfx.steal();
+    }
     this.selectedCards = [];
     this.message = '';
     if (eights > 0) {
