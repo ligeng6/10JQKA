@@ -1,6 +1,7 @@
 import { MenuScene } from './scenes/menuScene';
 import { GameScene } from './scenes/gameScene';
 import { bgm } from './bgm';
+import { sfx } from './sfx';
 
 declare const wx: any;
 
@@ -33,6 +34,7 @@ function main(): void {
   // 初始化 BGM
   bgm.init('assets/audio/bgm.mp3');
   bgm.play();
+  sfx.init();
 
   switchToMenu();
 

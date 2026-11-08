@@ -9,6 +9,7 @@ import {
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 import { decideAction, pickStealTarget } from '../ai';
 import { sfx } from '../sfx';
+import { SettingsPanel } from '../ui/settings';
 
 export class GameScene {
   private state: GameState;
@@ -40,6 +41,8 @@ export class GameScene {
   private btnStealCancel: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   private onBack: () => void;
+  private settings = new SettingsPanel();
+  private btnSettings: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private aiTimer = 0;
   private readonly AI_DELAY = 40;
 
@@ -76,6 +79,7 @@ export class GameScene {
 
     if (this.stealMode !== 'none') this.renderStealOverlay(ctx);
     this.renderMessage(ctx);
+    if (this.settings.isVisible) this.settings.render(ctx);
   }
 
   // ─── AI ────────────────────────────────────────────
@@ -108,7 +112,9 @@ export class GameScene {
     drawButton(ctx, '←', 12, 8, 64, 32, 'rgba(255,255,255,0.15)');
     drawText(ctx, `第${this.state.roundNumber}轮`, 100, 24, 22, COLORS.TEXT_WHITE, 'left', 'middle');
     drawText(ctx, `牌库:${this.state.deck.length}`, W / 2, 24, 22, COLORS.TEXT_GRAY, 'center', 'middle');
-    drawText(ctx, `分数:${getScores(this.state)[this.myIndex]}`, W - 20, 24, 22, COLORS.TEXT_YELLOW, 'right', 'middle');
+    drawText(ctx, `分数:${getScores(this.state)[this.myIndex]}`, W - 100, 24, 22, COLORS.TEXT_YELLOW, 'right', 'middle');
+    this.btnSettings = { x: W - 80, y: 8, w: 60, h: 32 };
+    drawButton(ctx, '⚙', W - 80, 8, 60, 32, 'rgba(255,255,255,0.12)');
 
     if (this.state.phase === 'finished') {
       const won = this.state.winnerIndexes.includes(this.myIndex);
@@ -367,6 +373,15 @@ export class GameScene {
 
   // ─── 触摸 ─────────────────────────────────────────
   touch(x: number, y: number): void {
+    if (this.settings.isVisible) {
+      this.settings.touch(x, y);
+      return;
+    }
+    if (hitTest(this.btnSettings, x, y)) {
+      sfx.click();
+      this.settings.show(this.W, this.H);
+      return;
+    }
     if (this.stealMode !== 'none') {
       this.handleStealTouch(x, y);
       return;
@@ -383,6 +398,14 @@ export class GameScene {
       if (hitTest(this.btnPass, x, y)) { sfx.click(); this.handlePass(); return; }
 
     }
+  }
+
+  touchMove(x: number, y: number): void {
+    if (this.settings.isVisible) this.settings.touchMove(x, y);
+  }
+
+  touchEnd(): void {
+    if (this.settings.isVisible) this.settings.touchEnd();
   }
 
   private handleStealTouch(x: number, y: number): void {
