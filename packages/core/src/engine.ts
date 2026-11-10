@@ -63,6 +63,7 @@ export function createGame(config: GameConfig): GameState {
   return {
     players,
     deck: remaining,
+    discardPile: [],
     scoreZone: [],
     currentPlayerIndex: 0,
     currentTrick: [],
@@ -268,6 +269,8 @@ function endTrick(state: GameState): void {
       if (isScoringCard(card)) {
         scoringCards.push(card);
         state.scoreZone.push(card);
+      } else {
+        state.discardPile.push(card);
       }
     }
   }
@@ -297,13 +300,11 @@ function endTrick(state: GameState): void {
 
     skipEmptyPlayers(state);
 
-    // 检查牌库打空
-    if (state.deck.length === 0) {
+    // 牌库空且有剩余洗牌次数 → 立即洗牌重建
+    if (state.deck.length === 0 && state.shuffleRounds > 0 && state.emptyDeckRounds < state.shuffleRounds) {
       state.emptyDeckRounds += 1;
-      if (state.shuffleRounds > 0 && state.emptyDeckRounds >= state.shuffleRounds) {
-        shuffleReset(state);
-      }
-    } else {
+      shuffleReset(state);
+    } else if (state.deck.length > 0) {
       state.emptyDeckRounds = 0;
     }
 
@@ -366,19 +367,14 @@ function awardBenliu(state: GameState, playerIndex: number): void {
 // ─── 洗牌重置 ─────────────────────────────────────────────
 
 function shuffleReset(state: GameState): void {
-  // 收集所有已打出的非计分牌
-  const discardPile: Card[] = [];
-  // 从 log 中无法恢复，改为：将非计分牌从 scoreZone 之外的地方回收
-  // 实际上已打出的牌不在任何地方（被丢弃了），需要重新生成
-  // 这里用简化方案：从所有玩家手中回收多余的非计分牌（>STARTING_HAND_SIZE 的部分）
+  // 从弃牌堆回收非计分牌，洗回牌库
+  const recovered = state.discardPile.filter((c) => !isScoringCard(c));
+  state.discardPile = [];
 
-  // 重置牌库为剩余非计分牌
-  const nonScoring = state.deck.filter((c) => !isScoringCard(c));
-  const shuffled = shuffle(nonScoring, rng);
+  const shuffled = shuffle(recovered, rng);
   state.deck = shuffled;
-  state.emptyDeckRounds = 0;
 
-  addLog(state, '牌库打空' + state.shuffleRounds + '轮，洗牌重置');
+  addLog(state, '牌库打空，洗牌重置（回收' + recovered.length + '张）');
 }
 
 // ─── 胜利判定 ─────────────────────────────────────────────

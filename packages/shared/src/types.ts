@@ -104,6 +104,8 @@ export interface GameState {
   players: PlayerState[];
   /** 牌库（抽牌堆） */
   deck: Card[];
+  /** 弃牌堆：已打出的非计分牌（供洗牌回收） */
+  discardPile: Card[];
   /** 分数区：本轮及历史落地的计分牌 */
   scoreZone: Card[];
   /** 当前应操作的玩家 */
