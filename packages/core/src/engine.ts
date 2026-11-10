@@ -386,7 +386,7 @@ function checkScoreVictory(state: GameState): void {
 
   // 检查是否所有计分牌都被收集
   // 一副牌：4×5 + 4×10 + 4×K = 20 张计分牌
-  const TOTAL_SCORING_CARDS = 20;
+  const TOTAL_SCORING_CARDS = 12; // 4张5 + 4张10 + 4张K = 12张(100分)
   if (totalCollected >= TOTAL_SCORING_CARDS || totalScoringInScoreZone >= TOTAL_SCORING_CARDS) {
     // 计算分数
     const scores = state.players.map((p) => {

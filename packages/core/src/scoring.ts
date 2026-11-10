@@ -36,7 +36,7 @@ export function teamScores(state: GameState): [number, number] {
 
 /** 全场计分牌总数 */
 export function totalScoringCards(): number {
-  return 20; // 4×5(5分) + 4×10(10分) + 4×K(10分) = 100分
+  return 12; // 4张5 + 4张10 + 4张K = 12张(100分)
 }
 
 /** 检查是否所有计分牌都已落地（被收集） */
