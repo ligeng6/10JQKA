@@ -8,15 +8,27 @@ export class SettingsPanel {
   private W = 0;
   private H = 0;
 
-  // 滑条
   private bgmSlider: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private sfxSlider: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnShuffleMinus: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnShufflePlus: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnTestBgm: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnTestSfx: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnClose: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private dragging: 'bgm' | 'sfx' | null = null;
 
-  // 当前音量 (0-1)
   private bgmVol = 0.6;
   private sfxVol = 0.7;
+  private shuffleRounds = 3;
+
+  /** 外部读取洗牌次数 */
+  getShuffleRounds(): number {
+    return this.shuffleRounds;
+  }
+
+  setShuffleRounds(n: number): void {
+    this.shuffleRounds = Math.max(0, Math.min(10, n));
+  }
 
   show(w: number, h: number): void {
     this.visible = true;
@@ -40,78 +52,95 @@ export class SettingsPanel {
     const H = this.H;
 
     // 遮罩
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillStyle = 'rgba(0,0,0,0.82)';
     ctx.fillRect(0, 0, W, H);
 
-    // 面板
-    const pw = Math.min(500, W * 0.7);
-    const ph = Math.min(360, H * 0.55);
+    // 面板 — 深色背景
+    const pw = Math.min(540, W * 0.68);
+    const ph = Math.min(480, H * 0.7);
     const px = (W - pw) / 2;
     const py = (H - ph) / 2;
 
-    drawPanel(ctx, px, py, pw, ph, 'rgba(30,60,40,0.95)');
-    ctx.strokeStyle = 'rgba(255,215,0,0.3)';
-    ctx.lineWidth = 2;
+    // 面板背景
+    drawPanel(ctx, px, py, pw, ph, 'rgba(20,40,28,0.97)');
+    ctx.strokeStyle = 'rgba(255,215,0,0.35)';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect(px, py, pw, ph, 16);
+    ctx.roundRect(px, py, pw, ph, 20);
     ctx.stroke();
 
     // 标题
-    drawText(ctx, '⚙ 设置', W / 2, py + 36, 30, COLORS.TEXT_YELLOW, 'center');
+    drawText(ctx, '⚙ 游戏设置', W / 2, py + 42, 36, COLORS.TEXT_YELLOW, 'center');
+    drawText(ctx, '─── 音量调节 ───', W / 2, py + 80, 22, 'rgba(255,255,255,0.3)', 'center');
 
     // BGM 音量
-    const sliderW = pw * 0.6;
-    const sliderH = 12;
+    const sliderW = pw * 0.55;
+    const sliderH = 14;
     const sliderX = px + (pw - sliderW) / 2;
 
-    const bgmY = py + 100;
-    drawText(ctx, `背景音乐 ${Math.round(this.bgmVol * 100)}%`, px + pw / 2, bgmY - 18, 22, COLORS.TEXT_WHITE, 'center');
-    this.drawSlider(ctx, sliderX, bgmY, sliderW, sliderH, this.bgmVol);
-    this.bgmSlider = { x: sliderX, y: bgmY - 20, w: sliderW, h: 50 };
+    const bgmY = py + 130;
+    drawText(ctx, `背景音乐  ${Math.round(this.bgmVol * 100)}%`, px + pw / 2, bgmY - 14, 26, '#fff', 'center');
+    this.drawSlider(ctx, sliderX, bgmY + 12, sliderW, sliderH, this.bgmVol, '#27ae60');
+    this.bgmSlider = { x: sliderX, y: bgmY - 4, w: sliderW, h: 50 };
 
     // SFX 音量
-    const sfxY = py + 190;
-    drawText(ctx, `音效 ${Math.round(this.sfxVol * 100)}%`, px + pw / 2, sfxY - 18, 22, COLORS.TEXT_WHITE, 'center');
-    this.drawSlider(ctx, sliderX, sfxY, sliderW, sliderH, this.sfxVol);
-    this.sfxSlider = { x: sliderX, y: sfxY - 20, w: sliderW, h: 50 };
+    const sfxY = py + 220;
+    drawText(ctx, `音效音量  ${Math.round(this.sfxVol * 100)}%`, px + pw / 2, sfxY - 14, 26, '#fff', 'center');
+    this.drawSlider(ctx, sliderX, sfxY + 12, sliderW, sliderH, this.sfxVol, '#3498db');
+    this.sfxSlider = { x: sliderX, y: sfxY - 4, w: sliderW, h: 50 };
+
+    // 洗牌次数
+    const shuffleY = py + 310;
+    drawText(ctx, '─── 游戏规则 ───', W / 2, shuffleY - 28, 22, 'rgba(255,255,255,0.3)', 'center');
+    drawText(ctx, '洗牌重置次数', W / 2, shuffleY + 8, 26, '#fff', 'center');
+
+    const btnS = 48;
+    this.btnShuffleMinus = { x: W / 2 - 110, y: shuffleY + 36, w: btnS, h: btnS };
+    this.btnShufflePlus = { x: W / 2 + 62, y: shuffleY + 36, w: btnS, h: btnS };
+
+    drawButton(ctx, '−', this.btnShuffleMinus.x, this.btnShuffleMinus.y, btnS, btnS, '#c0392b');
+    drawButton(ctx, '+', this.btnShufflePlus.x, this.btnShufflePlus.y, btnS, btnS, '#27ae60');
+    drawText(ctx, this.shuffleRounds === 0 ? '不洗牌' : String(this.shuffleRounds), W / 2, shuffleY + 60, 36, COLORS.TEXT_YELLOW, 'center', 'middle');
 
     // 测试按钮
-    const testW = 100, testH = 40;
-    const testY = py + 260;
-    drawButton(ctx, '测试音乐', W / 2 - testW - 10, testY, testW, testH, '#2980b9');
-    drawButton(ctx, '测试音效', W / 2 + 10, testY, testW, testH, '#8e44ad');
+    const testW = 130, testH = 48;
+    const testY = py + ph - 80;
+    this.btnTestBgm = { x: W / 2 - testW - 12, y: testY, w: testW, h: testH };
+    this.btnTestSfx = { x: W / 2 + 12, y: testY, w: testW, h: testH };
+    drawButton(ctx, '🎵 测试', this.btnTestBgm.x, testY, testW, testH, '#2980b9');
+    drawButton(ctx, '🔊 测试', this.btnTestSfx.x, testY, testW, testH, '#8e44ad');
 
     // 关闭按钮
-    this.btnClose = { x: px + pw - 50, y: py + 12, w: 38, h: 38 };
-    drawButton(ctx, '✕', this.btnClose.x, this.btnClose.y, 38, 38, '#c0392b');
+    this.btnClose = { x: px + pw - 56, y: py + 16, w: 42, h: 42 };
+    drawButton(ctx, '✕', this.btnClose.x, this.btnClose.y, 42, 42, '#c0392b');
   }
 
-  private drawSlider(ctx: any, x: number, y: number, w: number, h: number, value: number): void {
+  private drawSlider(ctx: any, x: number, y: number, w: number, h: number, value: number, color: string): void {
     // 轨道
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
     roundRect(ctx, x, y, w, h, h / 2);
     ctx.fill();
 
     // 填充
     const fillW = w * value;
-    if (fillW > 0) {
+    if (fillW > 2) {
       const grad = ctx.createLinearGradient(x, y, x + fillW, y);
-      grad.addColorStop(0, '#27ae60');
-      grad.addColorStop(1, '#2ecc71');
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, color + 'cc');
       ctx.fillStyle = grad;
       roundRect(ctx, x, y, fillW, h, h / 2);
       ctx.fill();
     }
 
     // 滑块
-    const knobX = x + fillW - 14;
-    const knobY = y + h / 2 - 14;
+    const knobX = x + fillW;
+    const knobR = 16;
     ctx.beginPath();
-    ctx.arc(knobX + 14, knobY + 14, 14, 0, Math.PI * 2);
+    ctx.arc(knobX, y + h / 2, knobR, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
-    ctx.strokeStyle = '#ccc';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
     ctx.stroke();
   }
 
@@ -123,8 +152,26 @@ export class SettingsPanel {
       sfx.click();
       return true;
     }
+    if (hitTest(this.btnShuffleMinus, x, y)) {
+      sfx.click();
+      if (this.shuffleRounds > 0) this.shuffleRounds--;
+      return true;
+    }
+    if (hitTest(this.btnShufflePlus, x, y)) {
+      sfx.click();
+      if (this.shuffleRounds < 10) this.shuffleRounds++;
+      return true;
+    }
+    if (hitTest(this.btnTestBgm, x, y)) {
+      bgm.play();
+      sfx.click();
+      return true;
+    }
+    if (hitTest(this.btnTestSfx, x, y)) {
+      sfx.playCard();
+      return true;
+    }
 
-    // 滑条拖动
     if (hitTest(this.bgmSlider, x, y)) {
       this.dragging = 'bgm';
       this.updateBgmFromX(x);
@@ -136,10 +183,10 @@ export class SettingsPanel {
       return true;
     }
 
-    return true; // 拦截所有点击
+    return true;
   }
 
-  touchMove(x: number, y: number): void {
+  touchMove(x: number, _y: number): void {
     if (this.dragging === 'bgm') this.updateBgmFromX(x);
     else if (this.dragging === 'sfx') this.updateSfxFromX(x);
   }
@@ -159,16 +206,5 @@ export class SettingsPanel {
     this.sfxVol = Math.max(0, Math.min(1, t));
     sfx.setVolume(this.sfxVol);
     sfx.click();
-  }
-
-  /** 测试音乐 */
-  testBgm(): void {
-    bgm.play();
-    sfx.click();
-  }
-
-  /** 测试音效 */
-  testSfx(): void {
-    sfx.playCard();
   }
 }
