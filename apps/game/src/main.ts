@@ -1,7 +1,9 @@
 import { MenuScene } from './scenes/menuScene';
 import { GameScene } from './scenes/gameScene';
+import { RoomScene } from './scenes/roomScene';
 import { bgm } from './bgm';
 import { sfx } from './sfx';
+import { ShareManager } from './network/share';
 
 declare const wx: any;
 
@@ -16,6 +18,18 @@ function switchToMenu(): void {
     currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds);
     bgm.play();
   });
+
+  // 联机入口
+  currentScene.onCreateRoom = (room: any) => {
+    currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r: any) => {
+      currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds);
+    });
+    sfx.click();
+  };
+  currentScene.onJoinRoom = () => {
+    // TODO: 输入房间码界面
+    sfx.click();
+  };
 }
 
 function main(): void {
@@ -31,10 +45,16 @@ function main(): void {
   ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  // 初始化 BGM
   bgm.init('assets/audio/bgm.mp3');
   bgm.play();
   sfx.init();
+
+  // 解析启动参数（好友分享进入）
+  const launch = ShareManager.parseLaunchOptions();
+  if (launch.action === 'join' && launch.roomCode) {
+    // 自动加入房间
+    // TODO: 连接房间
+  }
 
   switchToMenu();
 
@@ -42,26 +62,12 @@ function main(): void {
     const t = e.touches[0];
     currentScene.touch(t.clientX, t.clientY);
   });
-
   wx.onTouchMove((e: any) => {
     const t = e.touches[0];
     if (currentScene.touchMove) currentScene.touchMove(t.clientX, t.clientY);
   });
-
   wx.onTouchEnd(() => {
     if (currentScene.touchEnd) currentScene.touchEnd();
-  });
-
-  wx.onWindowResize?.(() => {
-    const info = wx.getSystemInfoSync();
-    const d = info.pixelRatio || 1;
-    screenW = info.windowWidth;
-    screenH = info.windowHeight;
-    canvas.width = screenW * d;
-    canvas.height = screenH * d;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(d, d);
-    if (currentScene.resize) currentScene.resize(screenW, screenH);
   });
 
   function loop(): void {

@@ -4,15 +4,20 @@ import { L } from '../render/layout';
 import { bgm } from '../bgm';
 import { sfx } from '../sfx';
 import { SettingsPanel } from '../ui/settings';
+import { roomManager } from '../network/room';
 
 export class MenuScene {
   private W = 0;
   private H = 0;
   private onModeSelect: (mode: 'ffa' | '2v2', shuffleRounds: number) => void;
+  onCreateRoom?: (room: any) => void;
+  onJoinRoom?: () => void;
 
   private btnFfa: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btn2v2: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnSettings: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnCreateRoom: Rect = { x: 0, y: 0, w: 0, h: 0 };
+  private btnJoinRoom: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
   private settings = new SettingsPanel();
   private particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
@@ -84,6 +89,15 @@ export class MenuScene {
     drawButton(ctx, '混战模式', startX, btnY, btnW, btnH, '#2d8b5e');
     drawButton(ctx, '2V2 组队', startX + btnW + gap, btnY, btnW, btnH, '#2980b9');
 
+    // 联机按钮
+    const onlineY = btnY + btnH + L.gapXL;
+    const ow = L.btnW;
+    const oh = L.btnH;
+    this.btnCreateRoom = { x: W / 2 - ow - L.gapS, y: onlineY, w: ow, h: oh };
+    this.btnJoinRoom = { x: W / 2 + L.gapS, y: onlineY, w: ow, h: oh };
+    drawButton(ctx, '🔗 创建房间', this.btnCreateRoom.x, onlineY, ow, oh, '#8e44ad');
+    drawButton(ctx, '📱 加入房间', this.btnJoinRoom.x, onlineY, ow, oh, '#e67e22');
+
     // 规则提示
     drawText(ctx, '4人对战 · 计分牌5/10/K共100分', W / 2, H * 0.7, L.fontS, 'rgba(255,255,255,0.3)', 'center');
     drawText(ctx, '集齐4张奔流牌获胜', W / 2, H * 0.7 + L.fontS + L.gapS, L.fontS, 'rgba(255,255,255,0.3)', 'center');
@@ -138,6 +152,17 @@ export class MenuScene {
     if (hitTest(this.btn2v2, x, y)) {
       sfx.click();
       this.onModeSelect('2v2', this.settings.getShuffleRounds());
+      return;
+    }
+    if (hitTest(this.btnCreateRoom, x, y)) {
+      sfx.click();
+      const room = roomManager.createRoom('ffa', this.settings.getShuffleRounds());
+      this.onCreateRoom?.(room);
+      return;
+    }
+    if (hitTest(this.btnJoinRoom, x, y)) {
+      sfx.click();
+      this.onJoinRoom?.();
       return;
     }
   }
