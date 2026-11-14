@@ -33,9 +33,8 @@ export class RoomScene {
       this.handleRoomEvent(event);
     });
 
-    // 分享邀请
+    // 设置被动转发（不主动弹出）
     ShareManager.setupPassiveShare(room.roomId, room.mode);
-    ShareManager.shareRoom(room.roomId, room.mode);
   }
 
   resize(w: number, h: number): void {
