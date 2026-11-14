@@ -108,10 +108,11 @@ export class MenuScene {
 
     drawText(ctx, '一副牌就能玩的对战', W / 2, H * 0.12 + L.fontXXL + L.gapS, L.fontM, COLORS.TEXT_GRAY, 'center');
 
-    const bw = Math.min(L.s(320), W * 0.32);
-    const bh = Math.min(L.s(100), H * 0.14);
-    const gap = L.gapXL;
-    const y = H * 0.38;
+    // 安全计算：确保按钮在屏幕内
+    const bw = Math.max(Math.min(L.s(320), W * 0.32), 120);
+    const bh = Math.max(Math.min(L.s(100), H * 0.14), 60);
+    const gap = Math.max(L.gapXL, 20);
+    const y = Math.min(H * 0.38, H - bh * 2);
 
     this.btnSolo = { x: W / 2 - bw - gap / 2, y, w: bw, h: bh };
     this.btnOnline = { x: W / 2 + gap / 2, y, w: bw, h: bh };

@@ -17,6 +17,7 @@ export class Layout {
   private _sy = 1;
 
   update(w: number, h: number): void {
+    if (w <= 0 || h <= 0) return;
     this._W = w;
     this._H = h;
     this._sx = w / this.BASE_W;

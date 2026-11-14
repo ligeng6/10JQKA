@@ -66,14 +66,26 @@ function main(): void {
   canvas = wx.createCanvas();
   const sys = wx.getSystemInfoSync();
   const dpr = sys.pixelRatio || 1;
-  screenW = sys.windowWidth;
-  screenH = sys.windowHeight;
 
-  canvas.width = screenW * dpr;
-  canvas.height = screenH * dpr;
+  // 强制横屏：取较大值为宽，较小值为高
+  const rawW = sys.windowWidth;
+  const rawH = sys.windowHeight;
+  screenW = Math.max(rawW, rawH);
+  screenH = Math.min(rawW, rawH);
+
+  // 设置画布物理像素
+  try {
+    canvas.width = screenW * dpr;
+    canvas.height = screenH * dpr;
+  } catch (e) {}
 
   ctx = canvas.getContext('2d');
+  try {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  } catch (e) {}
   ctx.scale(dpr, dpr);
+
+  console.log('[Main] screen:', screenW, 'x', screenH, 'dpr:', dpr);
 
   bgm.init('assets/audio/bgm.mp3');
   bgm.play();
