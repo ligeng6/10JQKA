@@ -4,7 +4,7 @@ import { RoomScene } from './scenes/roomScene';
 import { bgm } from './bgm';
 import { sfx } from './sfx';
 import { ShareManager } from './network/share';
-import { wxRoomManager, type WXRoomInfo, type WXRoomEvent } from './network/wxRoom';
+import { wxRoomManager, type WXRoomInfo } from './network/wxRoom';
 
 declare const wx: any;
 
@@ -13,21 +13,21 @@ let canvas: any;
 let ctx: any;
 let screenW = 0;
 let screenH = 0;
+let dpr = 1;
+let running = false;
 
 function switchToMenu(): void {
   const menu = new MenuScene(screenW, screenH);
-
   menu.onStartSolo = (mode, shuffleRounds) => {
     currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds, false);
     bgm.play();
     sfx.click();
   };
-
   menu.onCreateRoom = async (mode, shuffleRounds) => {
     sfx.click();
     try {
       wxRoomManager.init();
-      const roomId = await wxRoomManager.createRoom(mode, shuffleRounds);
+      await wxRoomManager.createRoom(mode, shuffleRounds);
       const room = wxRoomManager.room;
       if (room) {
         currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r: WXRoomInfo) => {
@@ -36,8 +36,6 @@ function switchToMenu(): void {
         });
       }
     } catch (e) {
-      console.warn('Create room failed:', e);
-      // 降级：本地房间
       const room: WXRoomInfo = {
         roomId: ShareManager.generateRoomCode(),
         ownerId: 'local',
@@ -53,45 +51,88 @@ function switchToMenu(): void {
       });
     }
   };
-
-  menu.onJoinRoom = async () => {
+  menu.onJoinRoom = () => {
     sfx.click();
-    // TODO: 房间码输入界面
   };
-
   currentScene = menu;
 }
 
-function main(): void {
+function initCanvas(): void {
   canvas = wx.createCanvas();
-  const sys = wx.getSystemInfoSync();
-  const dpr = sys.pixelRatio || 1;
 
-  // 强制横屏：取较大值为宽，较小值为高
+  const sys = wx.getSystemInfoSync();
+  dpr = sys.pixelRatio || 1;
+
   const rawW = sys.windowWidth;
   const rawH = sys.windowHeight;
   screenW = Math.max(rawW, rawH);
   screenH = Math.min(rawW, rawH);
 
-  // 设置画布物理像素
-  try {
-    canvas.width = screenW * dpr;
-    canvas.height = screenH * dpr;
-  } catch (e) {}
+  // 设置画布尺寸为物理像素
+  canvas.width = screenW * dpr;
+  canvas.height = screenH * dpr;
 
   ctx = canvas.getContext('2d');
-  try {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-  } catch (e) {}
+  // 缩放到逻辑像素
   ctx.scale(dpr, dpr);
 
-  console.log('[Main] screen:', screenW, 'x', screenH, 'dpr:', dpr);
+  console.log('[PokerGame] screen=' + screenW + 'x' + screenH + ' dpr=' + dpr + ' canvas=' + canvas.width + 'x' + canvas.height);
+}
+
+function startRenderLoop(): void {
+  if (running) return;
+  running = true;
+
+  function frame(): void {
+    if (!currentScene || !ctx) return;
+    try {
+      currentScene.render(ctx);
+    } catch (e) {
+      console.error('[PokerGame] render error:', e);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  console.log('[PokerGame] render loop started');
+}
+
+function bindTouch(): void {
+  wx.onTouchStart((e: any) => {
+    if (!e.touches || !e.touches[0]) return;
+    const t = e.touches[0];
+    if (currentScene && currentScene.touch) {
+      try {
+        currentScene.touch(t.clientX, t.clientY);
+      } catch (err) {
+        console.error('[PokerGame] touch error:', err);
+      }
+    }
+  });
+  wx.onTouchMove((e: any) => {
+    if (!e.touches || !e.touches[0]) return;
+    const t = e.touches[0];
+    if (currentScene && currentScene.touchMove) {
+      currentScene.touchMove(t.clientX, t.clientY);
+    }
+  });
+  wx.onTouchEnd(() => {
+    if (currentScene && currentScene.touchEnd) {
+      currentScene.touchEnd();
+    }
+  });
+}
+
+function main(): void {
+  try {
+    initCanvas();
+  } catch (e) {
+    console.error('[PokerGame] initCanvas error:', e);
+  }
 
   bgm.init();
-  bgm.play();
   sfx.init();
 
-  // 解析分享链接进入房间
+  // 解析分享链接
   const launch = ShareManager.parseLaunchOptions();
   if (launch.action === 'join' && launch.roomCode) {
     wxRoomManager.init();
@@ -100,7 +141,6 @@ function main(): void {
       if (room) {
         currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r) => {
           currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds, true);
-          bgm.play();
         });
       }
     }).catch(() => {
@@ -110,23 +150,8 @@ function main(): void {
     switchToMenu();
   }
 
-  wx.onTouchStart((e: any) => {
-    const t = e.touches[0];
-    currentScene.touch(t.clientX, t.clientY);
-  });
-  wx.onTouchMove((e: any) => {
-    const t = e.touches[0];
-    if (currentScene.touchMove) currentScene.touchMove(t.clientX, t.clientY);
-  });
-  wx.onTouchEnd(() => {
-    if (currentScene.touchEnd) currentScene.touchEnd();
-  });
-
-  function loop(): void {
-    currentScene.render(ctx);
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
+  bindTouch();
+  startRenderLoop();
 }
 
 main();
