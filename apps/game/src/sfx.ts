@@ -46,9 +46,7 @@ class SFXManager {
         audio.onCanplay(() => {
           this._loaded = true;
         });
-        audio.onError((err: any) => {
-          // CDN 未配置时静默失败
-        });
+        audio.onError(() => {});
         this.sounds[name] = audio;
       } catch (e) {}
     }

@@ -32,8 +32,7 @@ class BGMManager {
         this._loaded = true;
       });
 
-      this.audio.onError((err: any) => {
-        console.warn('BGM load error (CDN not configured?):', err?.errMsg || err);
+      this.audio.onError(() => {
         this._loaded = false;
       });
     } catch (e) {

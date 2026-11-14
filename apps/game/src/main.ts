@@ -87,7 +87,7 @@ function main(): void {
 
   console.log('[Main] screen:', screenW, 'x', screenH, 'dpr:', dpr);
 
-  bgm.init('assets/audio/bgm.mp3');
+  bgm.init();
   bgm.play();
   sfx.init();
 
