@@ -63,6 +63,8 @@ export class GameScene {
 
     const W = this.W;
     const H = this.H;
+
+    // 背景
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#0d2b1a');
     bg.addColorStop(0.5, '#1a472a');
@@ -70,14 +72,44 @@ export class GameScene {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
+    // 各层绘制（独立 save/restore 防污染）
+    ctx.save();
     this.renderTopBar(ctx);
+    ctx.restore();
+
+    ctx.save();
     this.renderTable(ctx);
+    ctx.restore();
+
+    ctx.save();
     this.renderOpponents(ctx);
+    ctx.restore();
+
+    ctx.save();
     this.renderMyHand(ctx);
+    ctx.restore();
+
+    ctx.save();
     this.renderActions(ctx);
-    if (this.stealMode !== 'none') this.renderStealOverlay(ctx);
+    ctx.restore();
+
+    // 偷牌覆盖层（最上层）
+    if (this.stealMode !== 'none') {
+      ctx.save();
+      this.renderStealOverlay(ctx);
+      ctx.restore();
+    }
+
+    ctx.save();
     this.renderMessage(ctx);
-    if (this.settings.isVisible) this.settings.render(ctx);
+    ctx.restore();
+
+    // 设置面板（最顶层）
+    if (this.settings.isVisible) {
+      ctx.save();
+      this.settings.render(ctx);
+      ctx.restore();
+    }
   }
 
   // ─── AI ────────────────────────────────────────────

@@ -67,19 +67,20 @@ export class MenuScene {
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
+    // 粒子
     for (const p of this.particles) {
       p.x += p.vx; p.y += p.vy;
       if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
       if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,215,0,${p.a})`;
+      ctx.fillStyle = 'rgba(255,215,0,' + p.a + ')';
       ctx.fill();
     }
 
-    // 标题（所有页面共用）
-    const titleY = H * 0.12;
+    // 标题
     ctx.save();
+    const titleY = H * 0.12;
     ctx.shadowColor = '#ffd700';
     ctx.shadowBlur = 30;
     drawText(ctx, '原创扑克', W / 2, titleY, L.fontXXL, COLORS.TEXT_YELLOW, 'center');
@@ -89,6 +90,7 @@ export class MenuScene {
     this.btnSettings = { x: W - L.btnSmallW * 2 - L.margin * 2, y: L.margin, w: L.btnSmallW, h: L.btnSmallH };
     drawButton(ctx, '⚙ 设置', this.btnSettings.x, this.btnSettings.y, this.btnSettings.w, this.btnSettings.h, 'rgba(255,255,255,0.15)');
 
+    // 页面内容
     if (this.page === 'main') {
       this.renderMainPage(ctx);
     } else if (this.page === 'solo') {
@@ -98,7 +100,11 @@ export class MenuScene {
     }
 
     this.drawCornerCards(ctx, W, H);
-    if (this.settings.isVisible) this.settings.render(ctx);
+
+    // 设置面板最顶层
+    if (this.settings.isVisible) {
+      this.settings.render(ctx);
+    }
   }
 
   // ─── 主页：两大入口 ─────────────────────────────────

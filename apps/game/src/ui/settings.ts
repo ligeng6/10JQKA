@@ -39,6 +39,7 @@ export class SettingsPanel {
   render(ctx: any): void {
     if (!this.visible) return;
 
+    ctx.save();
     const W = this.W;
     const H = this.H;
 
@@ -116,6 +117,7 @@ export class SettingsPanel {
     const closeS = L.btnSmallH;
     this.btnClose = { x: px + pw - closeS - L.gapM, y: py + L.gapM, w: closeS, h: closeS };
     drawButton(ctx, '✕', this.btnClose.x, this.btnClose.y, closeS, closeS, '#c0392b');
+    ctx.restore();
   }
 
   private drawSlider(ctx: any, x: number, y: number, w: number, h: number, value: number, color: string): void {

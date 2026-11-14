@@ -86,7 +86,12 @@ function startRenderLoop(): void {
   function frame(): void {
     if (!currentScene || !ctx) return;
     try {
-      currentScene.render(ctx);
+      ctx.save();
+      try {
+        currentScene.render(ctx);
+      } finally {
+        ctx.restore();
+      }
     } catch (e) {
       console.error('[PokerGame] render error:', e);
     }
