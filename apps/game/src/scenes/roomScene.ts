@@ -4,6 +4,7 @@ import { L } from '../render/layout';
 import { sfx } from '../sfx';
 import { roomManager, type Room } from '../network/room';
 import { ShareManager } from '../network/share';
+import { syncManager, type SyncEvent } from '../network/sync';
 
 export class RoomScene {
   private W = 0;
@@ -26,6 +27,26 @@ export class RoomScene {
     this.onBack = onBack;
     this.onStart = onStart;
     this.resize(w, h);
+  }
+
+  /** 连接联机服务器 */
+  connectOnline(serverUrl: string): void {
+    syncManager.onSync((event: SyncEvent) => {
+      if (event.type === 'player-joined') {
+        this.room.players.push({
+          id: event.playerId,
+          nickname: event.nickname,
+          avatar: '',
+          seatIndex: event.seatIndex,
+          isReady: false,
+        });
+      } else if (event.type === 'player-left') {
+        this.room.players = this.room.players.filter((p) => p.id !== event.playerId);
+      } else if (event.type === 'game-started') {
+        this.onStart(this.room);
+      }
+    });
+    syncManager.connect(serverUrl, this.room.code, roomManager.currentPlayerId);
   }
 
   resize(w: number, h: number): void {

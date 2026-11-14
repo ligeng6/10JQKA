@@ -4,6 +4,7 @@ import { RoomScene } from './scenes/roomScene';
 import { bgm } from './bgm';
 import { sfx } from './sfx';
 import { ShareManager } from './network/share';
+import { syncManager } from './network/sync';
 
 declare const wx: any;
 

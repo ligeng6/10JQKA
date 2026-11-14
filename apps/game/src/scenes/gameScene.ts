@@ -8,6 +8,7 @@ import { L } from '../render/layout';
 import { decideAction, pickStealTarget } from '../ai';
 import { sfx } from '../sfx';
 import { SettingsPanel } from '../ui/settings';
+import { syncManager, type GameAction } from '../network/sync';
 
 export class GameScene {
   private state: GameState;
@@ -40,10 +41,12 @@ export class GameScene {
   private settings = new SettingsPanel();
   private onBack: () => void;
   private aiTimer = 0;
+  private onlineMode = false;
   private readonly AI_DELAY = 40;
 
-  constructor(w: number, h: number, mode: GameMode, onBack: () => void, shuffleRounds: number = 3) {
+  constructor(w: number, h: number, mode: GameMode, onBack: () => void, shuffleRounds: number = 3, onlineMode: boolean = false) {
     this.onBack = onBack;
+    this.onlineMode = onlineMode;
     this.state = createGame({ mode, shuffleRounds });
     this.textures = generateCardTextures();
     this.resize(w, h);
@@ -445,6 +448,22 @@ export class GameScene {
     if (this.settings.isVisible) this.settings.touchEnd();
   }
 
+  /** 应用远端玩家操作 */
+  applyRemoteAction(action: GameAction): void {
+    // 远端操作已在 syncManager 的事件中通过 engine 执行
+    // 这里只更新本地状态
+    if (action.kind === 'play') {
+      // play 已在远端执行，state 已同步
+    }
+  }
+
+  /** 同步完整状态（断线重连用） */
+  syncState(): void {
+    if (this.onlineMode) {
+      syncManager.sendStateSync(this.state);
+    }
+  }
+
   private handleStealTouch(x: number, y: number): void {
     if (this.stealMode === 'select-target') {
       if (hitTest(this.btnStealCancel, x, y)) {
@@ -537,6 +556,9 @@ export class GameScene {
       this.pendingStealCount = eights;
       this.stealMode = 'select-target';
     }
+    if (this.onlineMode) {
+      syncManager.sendAction({ kind: 'play', cards: [...cards], stealTarget });
+    }
   }
 
   private handlePass(): void {
@@ -547,6 +569,9 @@ export class GameScene {
     sfx.pass();
     this.selectedCards = [];
     this.message = '';
+    if (this.onlineMode) {
+      syncManager.sendAction({ kind: 'pass' });
+    }
   }
 
   private handleDiscard(): void {
@@ -557,6 +582,9 @@ export class GameScene {
     sfx.click();
     this.selectedCards = [];
     this.message = '';
+    if (this.onlineMode) {
+      syncManager.sendAction({ kind: 'discard-small' });
+    }
   }
 
   private restart(): void {
