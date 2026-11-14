@@ -2,16 +2,15 @@ import { COLORS } from '../render/constants';
 import { drawButton, drawText, drawPanel, hitTest, type Rect } from '../render/draw';
 import { L } from '../render/layout';
 import { sfx } from '../sfx';
-import { roomManager, type Room, type Player } from '../network/room';
+import { wxRoomManager, type WXRoomInfo, type WXRoomPlayer, type WXRoomEvent } from '../network/wxRoom';
 import { ShareManager } from '../network/share';
-import { syncManager, type SyncEvent } from '../network/sync';
 
 export class RoomScene {
   private W = 0;
   private H = 0;
-  room: Room;
+  private room: WXRoomInfo;
   private onBack: () => void;
-  private onStart: (room: Room) => void;
+  private onStart: (room: WXRoomInfo) => void;
   private message = '';
   private messageTimer = 0;
 
@@ -23,13 +22,20 @@ export class RoomScene {
   private btnAddAI: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private btnRemoveAI: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
-  constructor(w: number, h: number, room: Room, onBack: () => void, onStart: (room: Room) => void) {
+  constructor(w: number, h: number, room: WXRoomInfo, onBack: () => void, onStart: (room: WXRoomInfo) => void) {
     this.room = room;
     this.onBack = onBack;
     this.onStart = onStart;
     this.resize(w, h);
-    ShareManager.setupPassiveShare(room.code, room.mode);
-    ShareManager.shareRoom(room.code, room.mode);
+
+    // 监听房间事件
+    wxRoomManager.onEvent((event: WXRoomEvent) => {
+      this.handleRoomEvent(event);
+    });
+
+    // 分享邀请
+    ShareManager.setupPassiveShare(room.roomId, room.mode);
+    ShareManager.shareRoom(room.roomId, room.mode);
   }
 
   resize(w: number, h: number): void {
@@ -38,23 +44,24 @@ export class RoomScene {
     L.update(w, h);
   }
 
-  connectOnline(serverUrl: string): void {
-    syncManager.onSync((event: SyncEvent) => {
-      if (event.type === 'player-joined') {
-        this.room.players.push({
-          id: event.playerId,
-          nickname: event.nickname,
-          avatar: '',
-          seatIndex: event.seatIndex,
-          isReady: false,
-        });
-      } else if (event.type === 'player-left') {
-        this.room.players = this.room.players.filter((p) => p.id !== event.playerId);
-      } else if (event.type === 'game-started') {
+  private handleRoomEvent(event: WXRoomEvent): void {
+    switch (event.type) {
+      case 'player-joined':
+        this.showMessage(`${event.player.nickname} 加入了房间`);
+        break;
+      case 'player-left':
+        this.showMessage('有玩家离开');
+        break;
+      case 'player-ready':
+        sfx.click();
+        break;
+      case 'game-started':
         this.onStart(this.room);
-      }
-    });
-    syncManager.connect(serverUrl, this.room.code, roomManager.currentPlayerId);
+        break;
+      case 'message':
+        // 处理游戏消息
+        break;
+    }
   }
 
   render(ctx: any): void {
@@ -80,7 +87,7 @@ export class RoomScene {
     const codeH = L.s(100);
     drawPanel(ctx, W / 2 - codeW / 2, codeY, codeW, codeH, 'rgba(255,255,255,0.08)');
     drawText(ctx, '房间码', W / 2, codeY + L.gapM, L.fontS, COLORS.TEXT_GRAY, 'center');
-    drawText(ctx, this.room.code, W / 2, codeY + codeH * 0.6, L.fontXXL, COLORS.TEXT_YELLOW, 'center');
+    drawText(ctx, this.room.roomId, W / 2, codeY + codeH * 0.6, L.fontXXL, COLORS.TEXT_YELLOW, 'center');
 
     // 复制/邀请按钮
     const btnY = codeY + codeH + L.gapM;
@@ -93,16 +100,15 @@ export class RoomScene {
 
     // 玩家列表
     const listY = btnY + bh + L.gapL;
-    const humanCount = this.room.players.filter((p) => !p.id.startsWith('ai_')).length;
-    const aiCount = this.room.players.filter((p) => p.id.startsWith('ai_')).length;
+    const humanCount = this.room.players.filter((p) => !p.isAI).length;
+    const aiCount = this.room.players.filter((p) => p.isAI).length;
     drawText(ctx, `玩家 (${this.room.players.length}/${this.room.maxPlayers})  真人:${humanCount} AI:${aiCount}`, W / 2, listY, L.fontM, COLORS.TEXT_WHITE, 'center');
 
     const slotH = L.s(68);
     this.room.players.forEach((p, i) => {
       const sy = listY + L.fontM + L.gapS + i * (slotH + L.gapS);
-      const isAI = p.id.startsWith('ai_');
-      drawPanel(ctx, W / 2 - L.s(280), sy, L.s(560), slotH, isAI ? 'rgba(142,68,173,0.12)' : 'rgba(255,255,255,0.06)');
-      drawText(ctx, `${isAI ? '🤖' : i === 0 ? '👑' : '🎮'} ${p.nickname}${isAI ? ' (AI)' : ''}`, W / 2 - L.s(250), sy + slotH / 2, L.fontS, isAI ? '#bb8fce' : '#fff', 'left', 'middle');
+      drawPanel(ctx, W / 2 - L.s(280), sy, L.s(560), slotH, p.isAI ? 'rgba(142,68,173,0.12)' : 'rgba(255,255,255,0.06)');
+      drawText(ctx, `${p.isAI ? '🤖' : p.openid === wxRoomManager.myOpenid ? '👑' : '🎮'} ${p.nickname}${p.isAI ? ' (AI)' : ''}`, W / 2 - L.s(250), sy + slotH / 2, L.fontS, p.isAI ? '#bb8fce' : '#fff', 'left', 'middle');
       drawText(ctx, p.isReady ? '✅' : '⏳', W / 2 + L.s(230), sy + slotH / 2, L.fontS, p.isReady ? '#27ae60' : COLORS.TEXT_GRAY, 'right', 'middle');
     });
 
@@ -123,15 +129,15 @@ export class RoomScene {
 
     // 底部按钮
     const bottomY = H - L.btnH - L.gapL;
-    const isHost = this.room.hostId === roomManager.currentPlayerId;
+    const isOwner = wxRoomManager.isOwner;
 
-    if (isHost) {
+    if (isOwner) {
       const canStart = this.room.players.length >= 2;
       this.btnStart = { x: W / 2 - L.btnW / 2, y: bottomY, w: L.btnW, h: L.btnH };
       drawButton(ctx, canStart ? `开始游戏 (${this.room.players.length}人)` : '至少需要2人', this.btnStart.x, bottomY, L.btnW, L.btnH, canStart ? '#27ae60' : '#555');
     } else {
       this.btnReady = { x: W / 2 - L.btnW / 2, y: bottomY, w: L.btnW, h: L.btnH };
-      const me = this.room.players.find((p) => p.id === roomManager.currentPlayerId);
+      const me = this.room.players.find((p) => p.openid === wxRoomManager.myOpenid);
       drawButton(ctx, me?.isReady ? '取消准备' : '准备', this.btnReady.x, bottomY, L.btnW, L.btnH, me?.isReady ? '#e67e22' : '#2980b9');
     }
 
@@ -139,43 +145,44 @@ export class RoomScene {
     if (this.messageTimer > 0) {
       this.messageTimer--;
       drawPanel(ctx, W / 2 - L.btnW, L.topBarH + L.gapS, L.btnW * 2, L.btnH, 'rgba(0,0,0,0.7)');
-      drawText(ctx, this.message, W / 2, L.topBarH + L.gapS + L.btnH / 2, L.fontS, '#ff6b6b', 'center', 'middle');
+      drawText(ctx, this.message, W / 2, L.topBarH + L.gapS + L.btnH / 2, L.fontS, '#fff', 'center', 'middle');
     }
   }
 
   touch(x: number, y: number): void {
     if (hitTest(this.btnBack, x, y)) {
       sfx.click();
-      roomManager.leaveRoom();
+      wxRoomManager.leaveRoom();
       this.onBack();
       return;
     }
     if (hitTest(this.btnCopy, x, y)) {
       sfx.click();
-      ShareManager.copyRoomCode(this.room.code);
+      ShareManager.copyRoomCode(this.room.roomId);
       return;
     }
     if (hitTest(this.btnShare, x, y)) {
       sfx.click();
-      ShareManager.shareRoom(this.room.code, this.room.mode);
+      ShareManager.shareRoom(this.room.roomId, this.room.mode);
       return;
     }
     if (hitTest(this.btnAddAI, x, y)) {
       sfx.click();
-      this.addAIPlayer();
+      const aiNames = ['小明', '小红', '小刚', '小美', '小李', '小张'];
+      const aiCount = this.room.players.filter((p) => p.isAI).length;
+      wxRoomManager.addAIPlayer(aiNames[aiCount % aiNames.length]);
       return;
     }
     if (hitTest(this.btnRemoveAI, x, y)) {
       sfx.click();
-      this.removeAIPlayer();
+      wxRoomManager.removeAIPlayer();
       return;
     }
     if (hitTest(this.btnReady, x, y)) {
       sfx.click();
-      const me = this.room.players.find((p) => p.id === roomManager.currentPlayerId);
+      const me = this.room.players.find((p) => p.openid === wxRoomManager.myOpenid);
       if (me) {
-        me.isReady = !me.isReady;
-        roomManager.setReady(me.isReady);
+        wxRoomManager.setReady(!me.isReady);
       }
       return;
     }
@@ -183,49 +190,16 @@ export class RoomScene {
       sfx.click();
       // AI 自动准备
       this.room.players.forEach((p) => {
-        if (p.id.startsWith('ai_')) p.isReady = true;
+        if (p.isAI) p.isReady = true;
       });
-      this.onStart(this.room);
+      wxRoomManager.startGame(Date.now());
       return;
     }
-  }
-
-  private addAIPlayer(): void {
-    const aiCount = this.room.players.filter((p) => p.id.startsWith('ai_')).length;
-    if (this.room.players.length >= this.room.maxPlayers) {
-      this.showMessage('房间已满');
-      return;
-    }
-    const seatIndex = this.findEmptySeat();
-    const aiNames = ['小明', '小红', '小刚', '小美', '小李', '小张'];
-    const ai: Player = {
-      id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      nickname: aiNames[aiCount % aiNames.length],
-      avatar: '',
-      seatIndex,
-      isReady: true,
-    };
-    this.room.players.push(ai);
-  }
-
-  private removeAIPlayer(): void {
-    const aiIndex = this.room.players.findLastIndex((p) => p.id.startsWith('ai_'));
-    if (aiIndex >= 0) {
-      this.room.players.splice(aiIndex, 1);
-    }
-  }
-
-  private findEmptySeat(): number {
-    const used = new Set(this.room.players.map((p) => p.seatIndex));
-    for (let i = 0; i < this.room.maxPlayers; i++) {
-      if (!used.has(i)) return i;
-    }
-    return this.room.players.length;
   }
 
   private showMessage(msg: string): void {
     this.message = msg;
-    this.messageTimer = 90;
+    this.messageTimer = 120;
   }
 
   touchMove(_x: number, _y: number): void {}

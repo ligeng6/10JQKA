@@ -4,6 +4,7 @@ import { RoomScene } from './scenes/roomScene';
 import { bgm } from './bgm';
 import { sfx } from './sfx';
 import { ShareManager } from './network/share';
+import { wxRoomManager, type WXRoomInfo, type WXRoomEvent } from './network/wxRoom';
 
 declare const wx: any;
 
@@ -22,30 +23,40 @@ function switchToMenu(): void {
     sfx.click();
   };
 
-  menu.onCreateRoom = (mode, shuffleRounds) => {
-    const room = {
-      code: ShareManager.generateRoomCode(),
-      hostId: 'local',
-      mode,
-      maxPlayers: 4,
-      players: [
-        { id: 'local', nickname: '房主', avatar: '', seatIndex: 0, isReady: true },
-      ],
-      status: 'waiting' as const,
-      shuffleRounds,
-    };
-    currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r: any) => {
-      const mode = r.mode || 'ffa';
-      const online = r.players.some((p: any) => !p.id.startsWith('ai_'));
-      currentScene = new GameScene(screenW, screenH, mode, switchToMenu, r.shuffleRounds, online);
-      bgm.play();
-    });
+  menu.onCreateRoom = async (mode, shuffleRounds) => {
     sfx.click();
+    try {
+      wxRoomManager.init();
+      const roomId = await wxRoomManager.createRoom(mode, shuffleRounds);
+      const room = wxRoomManager.room;
+      if (room) {
+        currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r: WXRoomInfo) => {
+          currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds, true);
+          bgm.play();
+        });
+      }
+    } catch (e) {
+      console.warn('Create room failed:', e);
+      // 降级：本地房间
+      const room: WXRoomInfo = {
+        roomId: ShareManager.generateRoomCode(),
+        ownerId: 'local',
+        mode,
+        maxPlayers: 4,
+        players: [{ openid: 'local', nickname: '房主', avatarUrl: '', seatIndex: 0, isReady: true, isAI: false }],
+        status: 'waiting',
+        shuffleRounds,
+      };
+      currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r) => {
+        currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds, false);
+        bgm.play();
+      });
+    }
   };
 
-  menu.onJoinRoom = () => {
-    // TODO: 输入房间码界面
+  menu.onJoinRoom = async () => {
     sfx.click();
+    // TODO: 房间码输入界面
   };
 
   currentScene = menu;
@@ -68,12 +79,24 @@ function main(): void {
   bgm.play();
   sfx.init();
 
+  // 解析分享链接进入房间
   const launch = ShareManager.parseLaunchOptions();
   if (launch.action === 'join' && launch.roomCode) {
-    // TODO: 自动加入房间
+    wxRoomManager.init();
+    wxRoomManager.joinRoom(launch.roomCode).then(() => {
+      const room = wxRoomManager.room;
+      if (room) {
+        currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r) => {
+          currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds, true);
+          bgm.play();
+        });
+      }
+    }).catch(() => {
+      switchToMenu();
+    });
+  } else {
+    switchToMenu();
   }
-
-  switchToMenu();
 
   wx.onTouchStart((e: any) => {
     const t = e.touches[0];
