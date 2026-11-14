@@ -1,0 +1,12 @@
+{
+  "name": "@pokergame/server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node relay.js",
+    "dev": "node relay.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
