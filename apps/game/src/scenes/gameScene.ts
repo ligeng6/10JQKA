@@ -2,7 +2,7 @@ import type { GameState, Card, GameMode } from '@pokergame/shared';
 import { createGame, playCards, passTurn, getScores, skipEmptyPlayers, canDiscardSmall, discardSmall } from '@pokergame/core';
 import { isScoringCard, cardScoreValue } from '@pokergame/shared';
 import { COLORS } from '../render/constants';
-import { drawCard, drawButton, drawText, drawPanel, drawTableFelt, hitTest, type Rect } from '../render/draw';
+import { drawCard, drawCardBack, drawButton, drawText, drawPanel, drawTableFelt, hitTest, type Rect } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 import { L } from '../render/layout';
 import { decideAction, pickStealTarget } from '../ai';
@@ -329,34 +329,62 @@ export class GameScene {
       if (!target) { this.stealMode = 'none'; return; }
 
       drawText(ctx, `🎯 从 P${this.stealTargetIndex} 手中选牌`, W / 2, H * 0.08, L.fontL, COLORS.TEXT_YELLOW, 'center');
-      drawText(ctx, `选 ${this.stealSelectedIds.length}/${this.pendingStealCount} 张 · 计分牌黄框标注`, W / 2, H * 0.08 + L.fontL + L.gapS, L.fontS, COLORS.TEXT_GRAY, 'center');
+      drawText(ctx, '奔流牌/计分牌可自选 · 手牌为暗牌盲选', W / 2, H * 0.08 + L.fontL + L.gapS, L.fontS, COLORS.TEXT_GRAY, 'center');
 
+      // 奔流牌（明牌，可自选）
+      const benliu = target.benliu;
+      if (benliu.length > 0) {
+        drawText(ctx, '奔流区（可自选）', L.margin, H * 0.2, L.fontS, COLORS.TEXT_YELLOW, 'left');
+        const cw = L.cardW * 0.8;
+        const ch = cw * 1.4;
+        const gap = L.cardGap;
+        benliu.forEach((card, i) => {
+          const x = L.margin + i * (cw + gap);
+          const y = H * 0.2 + L.fontS + L.gapS;
+          const selected = this.stealSelectedIds.includes(card.id);
+          drawCard(ctx, card, x, y, cw, ch, selected, this.textures);
+          if (isScoringCard(card)) {
+            ctx.strokeStyle = COLORS.TEXT_YELLOW;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(x - 2, y - 2, cw + 4, ch + 4, 10);
+            ctx.stroke();
+            drawText(ctx, `${cardScoreValue(card)}分`, x + cw / 2, y + ch + L.gapXS, L.fontXS, COLORS.TEXT_YELLOW, 'center');
+          }
+          this.stealCardRects.push({ card, rect: { x, y, w: cw, h: ch } });
+        });
+      }
+
+      // 手牌（暗牌，盲选）
       const hand = target.hand;
-      const cw = L.cardW * 0.85;
-      const ch = cw * 1.4;
-      const gap = L.cardGap;
+      const hY = benliu.length > 0 ? H * 0.52 : H * 0.26;
+      drawText(ctx, '手牌（暗牌盲选）', L.margin, hY, L.fontS, COLORS.TEXT_GRAY, 'left');
+      const hcw = L.cardW * 0.8;
+      const hch = hcw * 1.4;
+      const hgap = L.cardGap;
       const perRow = Math.min(hand.length, 13);
-      const totalW = perRow * (cw + gap) - gap;
-      const sx = Math.max(L.margin, (W - totalW) / 2);
+      const totalW = perRow * (hcw + hgap) - hgap;
+      const hsx = Math.max(L.margin, (W - totalW) / 2);
 
       hand.forEach((card, i) => {
         const row = Math.floor(i / 13);
         const col = i % 13;
-        const x = sx + col * (cw + gap);
-        const y = H * 0.22 + row * (ch + L.gapXL);
+        const x = hsx + col * (hcw + hgap);
+        const y = hY + L.fontS + L.gapS + row * (hch + L.gapL);
         const selected = this.stealSelectedIds.includes(card.id);
-        drawCard(ctx, card, x, y, cw, ch, selected, this.textures);
-        if (isScoringCard(card)) {
+        // 手牌显示牌背（暗牌）
+        drawCardBack(ctx, x, y, hcw, hch, this.textures);
+        if (selected) {
           ctx.strokeStyle = COLORS.TEXT_YELLOW;
           ctx.lineWidth = 3;
           ctx.beginPath();
-          ctx.roundRect(x - 2, y - 2, cw + 4, ch + 4, 10);
+          ctx.roundRect(x - 2, y - 2, hcw + 4, hch + 4, 10);
           ctx.stroke();
-          drawText(ctx, `${cardScoreValue(card)}分`, x + cw / 2, y + ch + L.gapXS, L.fontXS, COLORS.TEXT_YELLOW, 'center');
         }
-        this.stealCardRects.push({ card, rect: { x, y, w: cw, h: ch } });
+        this.stealCardRects.push({ card, rect: { x, y, w: hcw, h: hch } });
       });
 
+      // 底部按钮
       const btnY = H * 0.82;
       const bw = L.btnSmallW;
       const bh = L.btnH;
