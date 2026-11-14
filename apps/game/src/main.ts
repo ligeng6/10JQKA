@@ -4,7 +4,6 @@ import { RoomScene } from './scenes/roomScene';
 import { bgm } from './bgm';
 import { sfx } from './sfx';
 import { ShareManager } from './network/share';
-import { syncManager } from './network/sync';
 
 declare const wx: any;
 
@@ -15,22 +14,41 @@ let screenW = 0;
 let screenH = 0;
 
 function switchToMenu(): void {
-  currentScene = new MenuScene(screenW, screenH, (mode, shuffleRounds) => {
-    currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds);
-    bgm.play();
-  });
+  const menu = new MenuScene(screenW, screenH);
 
-  // 联机入口
-  currentScene.onCreateRoom = (room: any) => {
+  menu.onStartSolo = (mode, shuffleRounds) => {
+    currentScene = new GameScene(screenW, screenH, mode, switchToMenu, shuffleRounds, false);
+    bgm.play();
+    sfx.click();
+  };
+
+  menu.onCreateRoom = (mode, shuffleRounds) => {
+    const room = {
+      code: ShareManager.generateRoomCode(),
+      hostId: 'local',
+      mode,
+      maxPlayers: 4,
+      players: [
+        { id: 'local', nickname: '房主', avatar: '', seatIndex: 0, isReady: true },
+      ],
+      status: 'waiting' as const,
+      shuffleRounds,
+    };
     currentScene = new RoomScene(screenW, screenH, room, switchToMenu, (r: any) => {
-      currentScene = new GameScene(screenW, screenH, r.mode, switchToMenu, r.shuffleRounds);
+      const mode = r.mode || 'ffa';
+      const online = r.players.some((p: any) => !p.id.startsWith('ai_'));
+      currentScene = new GameScene(screenW, screenH, mode, switchToMenu, r.shuffleRounds, online);
+      bgm.play();
     });
     sfx.click();
   };
-  currentScene.onJoinRoom = () => {
+
+  menu.onJoinRoom = () => {
     // TODO: 输入房间码界面
     sfx.click();
   };
+
+  currentScene = menu;
 }
 
 function main(): void {
@@ -50,11 +68,9 @@ function main(): void {
   bgm.play();
   sfx.init();
 
-  // 解析启动参数（好友分享进入）
   const launch = ShareManager.parseLaunchOptions();
   if (launch.action === 'join' && launch.roomCode) {
-    // 自动加入房间
-    // TODO: 连接房间
+    // TODO: 自动加入房间
   }
 
   switchToMenu();
