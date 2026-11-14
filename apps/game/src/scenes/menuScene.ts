@@ -68,7 +68,7 @@ export class MenuScene {
     drawText(ctx, '一副牌就能玩的对战', W / 2, titleY + L.fontXXL + L.gapM, L.fontM, COLORS.TEXT_GRAY, 'center');
 
     // 设置按钮
-    this.btnSettings = { x: W - L.btnSmallW - L.margin, y: L.margin, w: L.btnSmallW, h: L.btnSmallH };
+    this.btnSettings = { x: W - L.btnSmallW * 2 - L.margin * 2, y: L.margin, w: L.btnSmallW, h: L.btnSmallH };
     drawButton(ctx, '⚙ 设置', this.btnSettings.x, this.btnSettings.y, this.btnSettings.w, this.btnSettings.h, 'rgba(255,255,255,0.15)');
 
     // 模式按钮

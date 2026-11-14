@@ -110,7 +110,7 @@ export class GameScene {
     drawText(ctx, `第${this.state.roundNumber}轮`, this.btnBack.x + this.btnBack.w + L.gapM, barH / 2, L.fontS, COLORS.TEXT_WHITE, 'left', 'middle');
     drawText(ctx, `牌库:${this.state.deck.length}`, W / 2, barH / 2, L.fontS, COLORS.TEXT_GRAY, 'center', 'middle');
 
-    this.btnSettings = { x: W - L.btnSmallW - L.margin, y: (barH - L.btnSmallH) / 2, w: L.btnSmallW, h: L.btnSmallH };
+    this.btnSettings = { x: W - L.btnSmallW * 2 - L.margin * 2, y: (barH - L.btnSmallH) / 2, w: L.btnSmallW, h: L.btnSmallH };
     drawButton(ctx, '⚙', this.btnSettings.x, this.btnSettings.y, this.btnSettings.w, this.btnSettings.h, 'rgba(255,255,255,0.12)');
 
     drawText(ctx, `分数:${getScores(this.state)[this.myIndex]}`, this.btnSettings.x - L.gapM, barH / 2, L.fontS, COLORS.TEXT_YELLOW, 'right', 'middle');
