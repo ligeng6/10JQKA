@@ -1,5 +1,6 @@
 import { drawButton, drawText, drawPanel, roundRect, hitTest, type Rect } from '../render/draw';
 import { COLORS } from '../render/constants';
+import { L } from '../render/layout';
 import { bgm } from '../bgm';
 import { sfx } from '../sfx';
 
@@ -56,8 +57,8 @@ export class SettingsPanel {
     ctx.fillRect(0, 0, W, H);
 
     // 面板 — 深色背景
-    const pw = Math.min(540, W * 0.68);
-    const ph = Math.min(480, H * 0.7);
+    const pw = Math.min(L.s(540), W * 0.68);
+    const ph = Math.min(L.s(480), H * 0.7);
     const px = (W - pw) / 2;
     const py = (H - ph) / 2;
 
@@ -70,49 +71,49 @@ export class SettingsPanel {
     ctx.stroke();
 
     // 标题
-    drawText(ctx, '⚙ 游戏设置', W / 2, py + 42, 36, COLORS.TEXT_YELLOW, 'center');
-    drawText(ctx, '─── 音量调节 ───', W / 2, py + 80, 22, 'rgba(255,255,255,0.3)', 'center');
+    drawText(ctx, '⚙ 游戏设置', W / 2, py + L.gapXL, L.fontXL, COLORS.TEXT_YELLOW, 'center');
+    drawText(ctx, '─── 音量调节 ───', W / 2, py + L.gapXL * 2, L.fontS, 'rgba(255,255,255,0.3)', 'center');
 
     // BGM 音量
     const sliderW = pw * 0.55;
-    const sliderH = 14;
+    const sliderH = L.gapM;
     const sliderX = px + (pw - sliderW) / 2;
 
-    const bgmY = py + 130;
-    drawText(ctx, `背景音乐  ${Math.round(this.bgmVol * 100)}%`, px + pw / 2, bgmY - 14, 26, '#fff', 'center');
+    const bgmY = py + L.s(130);
+    drawText(ctx, `背景音乐  ${Math.round(this.bgmVol * 100)}%`, px + pw / 2, bgmY - L.gapM, L.fontM, '#fff', 'center');
     this.drawSlider(ctx, sliderX, bgmY + 12, sliderW, sliderH, this.bgmVol, '#27ae60');
     this.bgmSlider = { x: sliderX, y: bgmY - 4, w: sliderW, h: 50 };
 
     // SFX 音量
-    const sfxY = py + 220;
-    drawText(ctx, `音效音量  ${Math.round(this.sfxVol * 100)}%`, px + pw / 2, sfxY - 14, 26, '#fff', 'center');
+    const sfxY = py + L.s(220);
+    drawText(ctx, `音效音量  ${Math.round(this.sfxVol * 100)}%`, px + pw / 2, sfxY - L.gapM, L.fontM, '#fff', 'center');
     this.drawSlider(ctx, sliderX, sfxY + 12, sliderW, sliderH, this.sfxVol, '#3498db');
     this.sfxSlider = { x: sliderX, y: sfxY - 4, w: sliderW, h: 50 };
 
     // 洗牌次数
-    const shuffleY = py + 310;
-    drawText(ctx, '─── 游戏规则 ───', W / 2, shuffleY - 28, 22, 'rgba(255,255,255,0.3)', 'center');
-    drawText(ctx, '洗牌重置次数', W / 2, shuffleY + 8, 26, '#fff', 'center');
+    const shuffleY = py + L.s(310);
+    drawText(ctx, '─── 游戏规则 ───', W / 2, shuffleY - L.gapL, L.fontS, 'rgba(255,255,255,0.3)', 'center');
+    drawText(ctx, '洗牌重置次数', W / 2, shuffleY + L.gapS, L.fontM, '#fff', 'center');
 
-    const btnS = 48;
+    const btnS = L.btnSmallH;
     this.btnShuffleMinus = { x: W / 2 - 110, y: shuffleY + 36, w: btnS, h: btnS };
     this.btnShufflePlus = { x: W / 2 + 62, y: shuffleY + 36, w: btnS, h: btnS };
 
     drawButton(ctx, '−', this.btnShuffleMinus.x, this.btnShuffleMinus.y, btnS, btnS, '#c0392b');
     drawButton(ctx, '+', this.btnShufflePlus.x, this.btnShufflePlus.y, btnS, btnS, '#27ae60');
-    drawText(ctx, this.shuffleRounds === 0 ? '不洗牌' : String(this.shuffleRounds), W / 2, shuffleY + 60, 36, COLORS.TEXT_YELLOW, 'center', 'middle');
+    drawText(ctx, this.shuffleRounds === 0 ? '不洗牌' : String(this.shuffleRounds), W / 2, shuffleY + L.gapXL, L.fontXL, COLORS.TEXT_YELLOW, 'center', 'middle');
 
     // 测试按钮
-    const testW = 130, testH = 48;
-    const testY = py + ph - 80;
+    const testW = L.btnSmallW * 1.3; const testH = L.btnH;
+    const testY = py + ph - L.btnH - L.gapL;
     this.btnTestBgm = { x: W / 2 - testW - 12, y: testY, w: testW, h: testH };
     this.btnTestSfx = { x: W / 2 + 12, y: testY, w: testW, h: testH };
     drawButton(ctx, '🎵 测试', this.btnTestBgm.x, testY, testW, testH, '#2980b9');
     drawButton(ctx, '🔊 测试', this.btnTestSfx.x, testY, testW, testH, '#8e44ad');
 
     // 关闭按钮
-    this.btnClose = { x: px + pw - 56, y: py + 16, w: 42, h: 42 };
-    drawButton(ctx, '✕', this.btnClose.x, this.btnClose.y, 42, 42, '#c0392b');
+    this.btnClose = { x: px + pw - L.btnSmallH - L.gapM, y: py + L.gapM, w: L.btnSmallH, h: L.btnSmallH };
+    drawButton(ctx, '✕', this.btnClose.x, this.btnClose.y, L.btnSmallH, L.btnSmallH, '#c0392b');
   }
 
   private drawSlider(ctx: any, x: number, y: number, w: number, h: number, value: number, color: string): void {

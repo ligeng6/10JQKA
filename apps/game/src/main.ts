@@ -52,6 +52,18 @@ function main(): void {
     if (currentScene.touchEnd) currentScene.touchEnd();
   });
 
+  wx.onWindowResize?.(() => {
+    const info = wx.getSystemInfoSync();
+    const d = info.pixelRatio || 1;
+    screenW = info.windowWidth;
+    screenH = info.windowHeight;
+    canvas.width = screenW * d;
+    canvas.height = screenH * d;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(d, d);
+    if (currentScene.resize) currentScene.resize(screenW, screenH);
+  });
+
   function loop(): void {
     currentScene.render(ctx);
     requestAnimationFrame(loop);

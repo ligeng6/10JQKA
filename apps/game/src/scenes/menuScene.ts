@@ -1,12 +1,13 @@
 import { COLORS } from '../render/constants';
 import { drawButton, drawText, drawPanel, roundRect, hitTest, type Rect } from '../render/draw';
+import { L } from '../render/layout';
 import { bgm } from '../bgm';
 import { sfx } from '../sfx';
 import { SettingsPanel } from '../ui/settings';
 
 export class MenuScene {
-  private W: number;
-  private H: number;
+  private W = 0;
+  private H = 0;
   private onModeSelect: (mode: 'ffa' | '2v2', shuffleRounds: number) => void;
 
   private btnFfa: Rect = { x: 0, y: 0, w: 0, h: 0 };
@@ -17,21 +18,23 @@ export class MenuScene {
   private particles: { x: number; y: number; vx: number; vy: number; r: number; a: number }[] = [];
 
   constructor(w: number, h: number, onModeSelect: (mode: 'ffa' | '2v2', shuffleRounds: number) => void) {
-    this.W = w;
-    this.H = h;
     this.onModeSelect = onModeSelect;
-    for (let i = 0; i < 30; i++) {
-      this.particles.push({
-        x: Math.random() * w, y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
-        r: Math.random() * 3 + 1, a: Math.random() * 0.3 + 0.1,
-      });
-    }
+    this.resize(w, h);
   }
 
-  update(w: number, h: number): void {
+  resize(w: number, h: number): void {
     this.W = w;
     this.H = h;
+    L.update(w, h);
+    if (this.particles.length === 0) {
+      for (let i = 0; i < 30; i++) {
+        this.particles.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+          r: Math.random() * 3 + 1, a: Math.random() * 0.3 + 0.1,
+        });
+      }
+    }
   }
 
   render(ctx: any): void {
@@ -56,23 +59,23 @@ export class MenuScene {
     }
 
     // 标题
-    const titleY = H * 0.16;
+    const titleY = H * 0.14;
     ctx.save();
     ctx.shadowColor = '#ffd700';
     ctx.shadowBlur = 30;
-    drawText(ctx, '原创扑克', W / 2, titleY, Math.min(72, W * 0.07), COLORS.TEXT_YELLOW, 'center');
+    drawText(ctx, '原创扑克', W / 2, titleY, L.fontXXL, COLORS.TEXT_YELLOW, 'center');
     ctx.restore();
-    drawText(ctx, '一副牌就能玩的对战', W / 2, titleY + 56, Math.min(26, W * 0.026), COLORS.TEXT_GRAY, 'center');
+    drawText(ctx, '一副牌就能玩的对战', W / 2, titleY + L.fontXXL + L.gapM, L.fontM, COLORS.TEXT_GRAY, 'center');
 
-    // 设置按钮（右上角）
-    this.btnSettings = { x: W - 110, y: 20, w: 90, h: 52 };
-    drawButton(ctx, '⚙ 设置', W - 110, 20, 90, 52, 'rgba(255,255,255,0.15)');
+    // 设置按钮
+    this.btnSettings = { x: W - L.btnSmallW - L.margin, y: L.margin, w: L.btnSmallW, h: L.btnSmallH };
+    drawButton(ctx, '⚙ 设置', this.btnSettings.x, this.btnSettings.y, this.btnSettings.w, this.btnSettings.h, 'rgba(255,255,255,0.15)');
 
     // 模式按钮
-    const btnW = Math.min(260, W * 0.25);
-    const btnH = Math.min(80, H * 0.11);
-    const btnY = H * 0.46;
-    const gap = 40;
+    const btnW = L.btnW;
+    const btnH = L.btnH;
+    const btnY = H * 0.44;
+    const gap = L.gapXL;
     const totalW = btnW * 2 + gap;
     const startX = (W - totalW) / 2;
 
@@ -82,23 +85,22 @@ export class MenuScene {
     drawButton(ctx, '2V2 组队', startX + btnW + gap, btnY, btnW, btnH, '#2980b9');
 
     // 规则提示
-    drawText(ctx, '4人对战 · 计分牌5/10/K共100分', W / 2, H * 0.72, Math.min(22, W * 0.022), 'rgba(255,255,255,0.3)', 'center');
-    drawText(ctx, '集齐4张奔流牌获胜', W / 2, H * 0.76, Math.min(22, W * 0.022), 'rgba(255,255,255,0.3)', 'center');
+    drawText(ctx, '4人对战 · 计分牌5/10/K共100分', W / 2, H * 0.7, L.fontS, 'rgba(255,255,255,0.3)', 'center');
+    drawText(ctx, '集齐4张奔流牌获胜', W / 2, H * 0.7 + L.fontS + L.gapS, L.fontS, 'rgba(255,255,255,0.3)', 'center');
 
     this.drawCornerCards(ctx, W, H);
 
-    if (this.settings.isVisible) {
-      this.settings.render(ctx);
-    }
+    if (this.settings.isVisible) this.settings.render(ctx);
   }
 
   private drawCornerCards(ctx: any, W: number, H: number): void {
-    const cw = 48, ch = 68;
+    const cw = L.cardSmallW * 0.8;
+    const ch = cw * 1.4;
     const corners = [
-      { x: 30, y: 30, r: -0.15, rank: 'A', suit: '♥', color: '#c0392b' },
-      { x: W - 30 - cw, y: 30, r: 0.15, rank: 'K', suit: '♠', color: '#2c3e50' },
-      { x: 30, y: H - 30 - ch, r: 0.12, rank: 'Q', suit: '♣', color: '#2c3e50' },
-      { x: W - 30 - cw, y: H - 30 - ch, r: -0.12, rank: 'J', suit: '♦', color: '#c0392b' },
+      { x: L.margin, y: L.margin, r: -0.15, rank: 'A', suit: '♥', color: '#c0392b' },
+      { x: W - L.margin - cw, y: L.margin, r: 0.15, rank: 'K', suit: '♠', color: '#2c3e50' },
+      { x: L.margin, y: H - L.margin - ch, r: 0.12, rank: 'Q', suit: '♣', color: '#2c3e50' },
+      { x: W - L.margin - cw, y: H - L.margin - ch, r: -0.12, rank: 'J', suit: '♦', color: '#c0392b' },
     ];
     for (const c of corners) {
       ctx.save();
@@ -108,11 +110,11 @@ export class MenuScene {
       roundRect(ctx, 0, 0, cw, ch, 6);
       ctx.fill();
       ctx.fillStyle = c.color;
-      ctx.font = `bold ${cw * 0.32}px sans-serif`;
+      ctx.font = `bold ${Math.floor(cw * 0.32)}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillText(c.rank, cw * 0.1, ch * 0.08);
-      ctx.font = `${cw * 0.22}px sans-serif`;
+      ctx.font = `${Math.floor(cw * 0.22)}px sans-serif`;
       ctx.fillText(c.suit, cw * 0.1, ch * 0.28);
       ctx.restore();
     }
@@ -123,7 +125,6 @@ export class MenuScene {
       this.settings.touch(x, y);
       return;
     }
-
     if (hitTest(this.btnSettings, x, y)) {
       sfx.click();
       this.settings.show(this.W, this.H);
