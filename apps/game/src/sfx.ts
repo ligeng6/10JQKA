@@ -1,39 +1,56 @@
 declare const wx: any;
 
 /**
- * 音效管理器 — 加载 .mp3 音效文件
+ * 音效管理器 — 从 CDN 加载音效
+ * 音频不打进包体，运行时远程加载
  */
+const SFX_CDN_BASE = 'https://your-cdn.com/audio/sfx/'; // TODO: 替换为实际 CDN 地址
+
+const SFX_FILES: Record<string, string> = {
+  card: 'card.mp3',
+  click: 'click.mp3',
+  win: 'win.mp3',
+  lose: 'lose.mp3',
+  coin: 'coin.mp3',
+  whoosh: 'whoosh.mp3',
+};
+
 class SFXManager {
   private sounds: Record<string, any> = {};
   private _volume = 0.7;
+  private _loaded = false;
 
   get volume(): number {
     return this._volume;
   }
 
+  get loaded(): boolean {
+    return this._loaded;
+  }
+
   setVolume(v: number): void {
     this._volume = Math.max(0, Math.min(1, v));
+    for (const audio of Object.values(this.sounds)) {
+      try {
+        (audio as any).volume = this._volume;
+      } catch (e) {}
+    }
   }
 
   init(): void {
-    const files: Record<string, string> = {
-      card: 'assets/audio/sfx/card.mp3',
-      click: 'assets/audio/sfx/click.mp3',
-      win: 'assets/audio/sfx/win.mp3',
-      lose: 'assets/audio/sfx/lose.mp3',
-      coin: 'assets/audio/sfx/coin.mp3',
-      whoosh: 'assets/audio/sfx/whoosh.mp3',
-    };
-
-    for (const [name, src] of Object.entries(files)) {
+    for (const [name, file] of Object.entries(SFX_FILES)) {
       try {
         const audio = wx.createInnerAudioContext();
-        audio.src = src;
+        audio.src = SFX_CDN_BASE + file;
         audio.volume = this._volume;
+        audio.onCanplay(() => {
+          this._loaded = true;
+        });
+        audio.onError((err: any) => {
+          // CDN 未配置时静默失败
+        });
         this.sounds[name] = audio;
-      } catch (e) {
-        console.warn('SFX load failed:', name, e);
-      }
+      } catch (e) {}
     }
   }
 
@@ -55,11 +72,6 @@ class SFXManager {
   steal(): void { this.play('coin'); }
   pass(): void { this.play('whoosh'); }
   bomb(): void { this.play('whoosh'); }
-
-  setVolumeFor(name: string, v: number): void {
-    const audio = this.sounds[name];
-    if (audio) audio.volume = v;
-  }
 }
 
 export const sfx = new SFXManager();
