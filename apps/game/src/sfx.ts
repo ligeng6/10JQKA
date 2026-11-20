@@ -1,12 +1,12 @@
 declare const wx: any;
 
-// 配置 CDN 后改为 true 并替换 URL
-const SFX_ENABLED = false;
-const SFX_CDN_BASE = '';
-
+/**
+ * 音效管理器 — 包内加载（小文件）
+ */
 class SFXManager {
   private sounds: Record<string, any> = {};
   private _volume = 0.7;
+  private _loaded = false;
 
   get volume(): number {
     return this._volume;
@@ -14,23 +14,25 @@ class SFXManager {
 
   setVolume(v: number): void {
     this._volume = Math.max(0, Math.min(1, v));
+    for (const audio of Object.values(this.sounds)) {
+      try { (audio as any).volume = this._volume; } catch (e) {}
+    }
   }
 
   init(): void {
-    if (!SFX_ENABLED) return;
     const files: Record<string, string> = {
-      card: 'card.mp3',
-      click: 'click.mp3',
-      win: 'win.mp3',
-      lose: 'lose.mp3',
-      coin: 'coin.mp3',
-      whoosh: 'whoosh.mp3',
+      card: 'assets/audio/sfx/card.mp3',
+      click: 'assets/audio/sfx/click.mp3',
+      win: 'assets/audio/sfx/win.mp3',
+      lose: 'assets/audio/sfx/lose.mp3',
     };
-    for (const [name, file] of Object.entries(files)) {
+    for (const [name, src] of Object.entries(files)) {
       try {
         const audio = wx.createInnerAudioContext();
-        audio.src = SFX_CDN_BASE + file;
+        audio.src = src;
         audio.volume = this._volume;
+        audio.onCanplay(() => { this._loaded = true; });
+        audio.onError(() => {});
         this.sounds[name] = audio;
       } catch (e) {}
     }
@@ -51,9 +53,9 @@ class SFXManager {
   selectCard(): void { this.play('click'); }
   win(): void { this.play('win'); }
   lose(): void { this.play('lose'); }
-  steal(): void { this.play('coin'); }
-  pass(): void { this.play('whoosh'); }
-  bomb(): void { this.play('whoosh'); }
+  steal(): void { this.play('card'); }
+  pass(): void { this.play('click'); }
+  bomb(): void { this.play('card'); }
 }
 
 export const sfx = new SFXManager();
