@@ -1,11 +1,11 @@
 import type { GameState, Card, GameMode } from '@pokergame/shared';
-import { createGame, playCards, passTurn, getScores, skipEmptyPlayers, canDiscardSmall, discardSmall } from '@pokergame/core';
+import { createGame, playCards, passTurn, getScores, skipEmptyPlayers, canDiscardSmall, discardSmall, canBeat } from '@pokergame/core';
 import { isScoringCard, cardScoreValue } from '@pokergame/shared';
 import { COLORS } from '../render/constants';
 import { drawCard, drawCardBack, drawButton, drawText, drawPanel, drawTableFelt, hitTest, type Rect } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 import { L } from '../render/layout';
-import { decideAction, pickStealTarget } from '../ai';
+import { decideAction, pickStealTarget, findAllPlays } from '../ai';
 import { sfx } from '../sfx';
 import { SettingsPanel } from '../ui/settings';
 import { syncManager, type GameAction } from '../network/sync';
@@ -41,6 +41,9 @@ export class GameScene {
   private settings = new SettingsPanel();
   private onBack: () => void;
   private aiTimer = 0;
+  private hintIndex = 0;
+  private hintPlays: { cards: Card[] }[] = [];
+  private btnHint: Rect = { x: 0, y: 0, w: 0, h: 0 };
   private onlineMode = false;
   private readonly AI_DELAY = 40;
 
@@ -304,6 +307,8 @@ export class GameScene {
       this.btnPass = { x: bx, y: by - bh - L.gapS, w: bw, h: bh };
       drawButton(ctx, `出牌(${this.selectedCards.length})`, bx, by, bw, bh, COLORS.BTN_PLAY);
       drawButton(ctx, '过牌', bx, by - bh - L.gapS, bw, bh, COLORS.BTN_PASS);
+      this.btnHint = { x: bx, y: by - bh * 2 - L.gapS * 2, w: bw, h: bh };
+      drawButton(ctx, '💡 提示', bx, by - bh * 2 - L.gapS * 2, bw, bh, '#d4a017');
     } else if (this.stealMode === 'none') {
       drawText(ctx, '🤖 AI 思考中...', W - L.margin, by + bh / 2, L.fontXS, 'rgba(255,255,255,0.2)', 'right', 'middle');
     }
@@ -469,6 +474,7 @@ export class GameScene {
     if (this.state.currentPlayerIndex === this.myIndex) {
       if (hitTest(this.btnPlay, x, y)) { sfx.click(); this.handlePlay(); return; }
       if (hitTest(this.btnPass, x, y)) { sfx.click(); this.handlePass(); return; }
+      if (hitTest(this.btnHint, x, y)) { sfx.click(); this.handleHint(); return; }
     }
   }
 
@@ -573,6 +579,46 @@ export class GameScene {
     this.messageTimer = 90;
   }
 
+  /** 提示功能：选中可压上家的备选牌，再点切换 */
+  private handleHint(): void {
+    const hand = this.state.players[this.myIndex]?.hand ?? [];
+    const benliu = this.state.players[this.myIndex]?.benliu ?? [];
+    const allCards = [...hand, ...benliu];
+
+    if (allCards.length === 0) {
+      this.showMessage("手牌为空");
+      return;
+    }
+
+    const allPlays = findAllPlays(allCards);
+
+    // 找当前需要压的牌型
+    const trick = this.state.currentTrick.filter((t) => !t.isPass);
+    const lastPlay = trick[trick.length - 1];
+    const targetPattern = lastPlay?.pattern ?? null;
+
+    let candidates = allPlays;
+    if (targetPattern) {
+      candidates = allPlays.filter((p) => canBeat(p.pattern, targetPattern));
+    }
+
+    if (candidates.length === 0) {
+      this.hintPlays = [];
+      this.hintIndex = 0;
+      this.selectedCards = [];
+      this.showMessage("无牌可打");
+      return;
+    }
+
+    // 循环切换提示
+    this.hintPlays = candidates.map((p) => ({ cards: p.cards }));
+    const idx = this.hintIndex % this.hintPlays.length;
+    const hint = this.hintPlays[idx]!;
+    this.selectedCards = [...hint.cards];
+    this.hintIndex = idx + 1;
+    sfx.selectCard();
+    this.showMessage("提示 " + (idx + 1) + "/" + this.hintPlays.length);
+  }
   private handlePlay(): void {
     if (this.selectedCards.length === 0) { this.showMessage('请先选牌'); return; }
     const eights = this.selectedCards.filter((c) => c.kind === 'normal' && c.rank === 8).length;
