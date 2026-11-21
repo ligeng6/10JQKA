@@ -301,11 +301,10 @@ function endTrick(state: GameState): void {
     skipEmptyPlayers(state);
 
     // 牌库空且有剩余洗牌次数 → 立即洗牌重建
+    // 牌库空且洗牌次数未用完 → 洗牌
     if (state.deck.length === 0 && state.shuffleRounds > 0 && state.emptyDeckRounds < state.shuffleRounds) {
       state.emptyDeckRounds += 1;
       shuffleReset(state);
-    } else if (state.deck.length > 0) {
-      state.emptyDeckRounds = 0;
     }
 
     // 终局条件1: 牌河耗尽 + 所有玩家手牌打完

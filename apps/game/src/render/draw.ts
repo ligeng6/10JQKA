@@ -245,3 +245,52 @@ function lightenColor(hex: string, percent: number): string {
   const b = Math.min(255, (num & 0x0000ff) + percent);
   return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
 }
+
+export function drawCircleButton(
+  ctx: any,
+  text: string,
+  cx: number,
+  cy: number,
+  r: number,
+  color: string,
+  fontSize?: number,
+): void {
+  ctx.save();
+
+  // 阴影
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 4;
+
+  // 渐变背景
+  const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.1, cx, cy, r);
+  grad.addColorStop(0, lightenColor(color, 30));
+  grad.addColorStop(1, color);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 边框
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // 文字
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold ' + (fontSize || Math.floor(r * 0.42)) + 'px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, cx, cy);
+
+  ctx.restore();
+}
+
+function lightenColor2(hex: string, percent: number): string {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, (num >> 16) + percent);
+  const g = Math.min(255, ((num >> 8) & 0xff) + percent);
+  const b = Math.min(255, (num & 0xff) + percent);
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}

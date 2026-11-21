@@ -2,7 +2,7 @@ import type { GameState, Card, GameMode } from '@pokergame/shared';
 import { createGame, playCards, passTurn, getScores, skipEmptyPlayers, canDiscardSmall, discardSmall, canBeat } from '@pokergame/core';
 import { isScoringCard, cardScoreValue } from '@pokergame/shared';
 import { COLORS } from '../render/constants';
-import { drawCard, drawCardBack, drawButton, drawText, drawPanel, drawTableFelt, hitTest, type Rect } from '../render/draw';
+import { drawCard, drawCardBack, drawButton, drawText, drawPanel, drawTableFelt, drawCircleButton, hitTest, type Rect } from '../render/draw';
 import { generateCardTextures, type CardTextures } from '../render/cardTextures';
 import { L } from '../render/layout';
 import { decideAction, pickStealTarget, findAllPlays } from '../ai';
@@ -315,8 +315,11 @@ export class GameScene {
 
     // 弃牌换牌
     if (this.stealMode === 'none' && this.state.phase === 'playing' && canDiscardSmall(this.state, this.myIndex)) {
-      this.btnDiscard = { x: L.margin, y: by, w: bw, h: bh };
-      drawButton(ctx, '弃牌换牌', L.margin, by, bw, bh, '#8e44ad');
+      const dr = Math.max(L.s(30), 24);
+      const dx = L.margin + dr;
+      const dy = H - L.handAreaH - dr - L.gapS;
+      this.btnDiscard = { x: dx - dr, y: dy - dr, w: dr * 2, h: dr * 2 };
+      drawCircleButton(ctx, '弃', dx, dy, dr, '#8e44ad');
     }
   }
 
